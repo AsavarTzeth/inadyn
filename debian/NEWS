@@ -1,0 +1,11 @@
+New upstream release is based on the several sources: original INADYN
+implementation from Narcis Ilisei, INADYN by Christoph Brill
+(https://sourceforge.net/projects/inadyn/), inadyn-advanced
+(https://sourceforge.net/projects/inadyn-advanced/),
+Neufbox4 patches from http://dev.efixo.net, wl500g patches from
+http://code.google.com/p/wl500g and patches by Timur Birsh
+(https://github.com/taem/inadyn).
+
+New upstream homepage http://troglobit.com/inadyn.shtml.
+
+ -- Timur Birsh <taem@linukz.org>  Mon, 07 Mar 2011 21:08:28 +0600
