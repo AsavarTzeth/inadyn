@@ -1,9 +1,0 @@
-/var/log/inadyn/inadyn.log {
-	daily
-	rotate 5
-	compress
-	delaycompress
-	missingok
-	notifempty
-	copytruncate
-}
