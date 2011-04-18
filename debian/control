@@ -10,6 +10,7 @@ Vcs-Browser: http://github.com/taem/inadyn
 
 Package: inadyn
 Architecture: any
+Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: dyndns-client
 Description: Simple and small DynDNS client written in the C language
