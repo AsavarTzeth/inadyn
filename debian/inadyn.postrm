@@ -3,16 +3,15 @@
 set -e
 
 NAME=inadyn
-LOGDIR=/var/log/$NAME
+RUNDIR=/var/run/$NAME
 CONF=/etc/$NAME.conf
 
 if [ "$1" = "purge" ]
 then
-	rm -rf $RUNDIR $LOGDIR
-	for i in $LOGDIR $CONF
-	do
-		dpkg-statoverride --remove $i 2>/dev/null || true
-	done
+	if [ -d $RUNDIR ]; then
+	    rm -rf $RUNDIR
+	fi
+	dpkg-statoverride --remove $i 2>/dev/null || true
 fi
 
 #DEBHELPER#
