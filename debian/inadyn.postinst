@@ -4,7 +4,7 @@ set -e
 
 NAME=inadyn
 LOGDIR=/var/log/$NAME
-CONF=$NAME.conf
+CONF=/etc/$NAME.conf
 
 if [ "$1" = "configure" ]
 then
