@@ -43,3 +43,8 @@ config.guess
 config.sub
 Makefile
 Makefile.in
+debian/files
+debian/inadyn.debhelper.log
+debian/inadyn.*.debhelper
+debian/inadyn.substvars
+debian/inadyn/
