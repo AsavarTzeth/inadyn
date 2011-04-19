@@ -15,7 +15,8 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="DynDNS client"
 NAME=inadyn
 DAEMON=/usr/bin/inadyn
-PIDFILE=/var/run/$NAME/$NAME.pid
+CACHEDIR=/var/run/$NAME
+PIDFILE=$CACHEDIR/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DEFAULT=/etc/default/$NAME
 CONFIG=/etc/$NAME.conf
@@ -39,6 +40,15 @@ if [ "$NO_START" = "yes" ] && [ "$1" != "stop" ]; then
 fi
 
 DAEMON_ARGS="--config $CONFIG --background --syslog --drop-privs $USER:$GROUP"
+
+create_cache_dir() {
+    # Create the cache empty dir if necessary
+    if [ ! -d $CACHEDIR ]; then
+        mkdir $CACHEDIR
+        chmod 0755 $CACHEDIR
+	chown $USER:$GROUP $CACHEDIR
+    fi
+}
 
 do_start()
 {
@@ -66,6 +76,7 @@ do_reload() {
 case "$1" in
   start)
     [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC " "$NAME"
+    create_cache_dir
     do_start
     case "$?" in
 		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
