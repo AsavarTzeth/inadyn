@@ -39,7 +39,7 @@ if [ "$NO_START" = "yes" ] && [ "$1" != "stop" ]; then
 	exit 0
 fi
 
-DAEMON_ARGS="--config $CONFIG --background --syslog --drop-privs $USER:$GROUP"
+DAEMON_ARGS="--config $CONFIG --background --drop-privs $USER:$GROUP"
 
 create_cache_dir() {
     # Create the cache empty dir if necessary

@@ -1,0 +1,11 @@
+/var/log/inadyn/inadyn.log {
+	daily
+	rotate 5
+	compress
+	delaycompress
+	missingok
+	notifempty
+        postrotate
+                [ ! -f /var/run/inadyn/inadyn.pid ] || kill -HUP `cat /var/run/inadyn/inadyn.pid`
+        endscript
+}

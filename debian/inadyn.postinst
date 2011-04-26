@@ -4,6 +4,7 @@ set -e
 
 NAME=inadyn
 RUNDIR=/var/run/$NAME
+LOGDIR=/var/log/$NAME
 CONF=/etc/$NAME.conf
 
 if [ "$1" = "configure" ]
@@ -31,6 +32,10 @@ then
 		 inadyn >/dev/null
 	fi
 
+	if ! dpkg-statoverride --list $LOGDIR >/dev/null 2>&1
+	then
+		dpkg-statoverride --update --add inadyn inadyn 755 $LOGDIR
+	fi
 	if ! dpkg-statoverride --list $CONF >/dev/null 2>&1
 	then
 		dpkg-statoverride --update --add root inadyn 640 $CONF
