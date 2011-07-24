@@ -26,8 +26,8 @@
 #include "http_client.h"
 #include "debug_if.h"
 
-#define DYNDNS_VERSION_STRING	VERSION_STRING
-#define DYNDNS_AGENT_NAME	"inadyn/" DYNDNS_VERSION_STRING
+#define DYNDNS_VERSION_STRING	"Inadyn version " VERSION_STRING " -- Dynamic DNS update client."
+#define DYNDNS_AGENT_NAME	"inadyn/" VERSION_STRING
 #define DYNDNS_EMAIL_ADDR	"troglobit@vmlinux.org"
 
 typedef enum
@@ -312,6 +312,7 @@ typedef struct DYN_DNS_CLIENT
 	int          forced_update_times; /* the same forced update period counted in sleep periods*/
 	int          cmd_check_period; /*time to wait for a command*/
 	int          total_iterations;
+	int          num_iterations;
 	char        *interface;
 	BOOL         initialized;
 	BOOL         run_in_background;
@@ -365,7 +366,7 @@ RC_TYPE get_config_data(DYN_DNS_CLIENT *p_self, int argc, char** argv);
 /*
 	printout of version
 */
-void dyn_dns_print_hello(void*p);
+void dyn_dns_print_hello(void);
 
 /*
 	 basic resource allocations for the dyn_dns object
