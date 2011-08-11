@@ -30,8 +30,8 @@ CONFIG=/etc/$NAME.conf
 
 # Set defaults values if no DEFAULT exist
 RUN_DAEMON=${RUN_DAEMON:-no}
-USER=${USER:-inadyn}
-GROUP=${GROUP:-inadyn}
+INADYN_USER=${INADYN_USER:-debian-inadyn}
+INADYN_GROUP=${INADYN_GROUP:-debian-inadyn}
 
 # Start the daemon if RUN_DAEMON is enabled in DEFAULT
 if [ "$RUN_DAEMON" != "yes" ] && [ "$1" != "stop" ]; then
@@ -39,7 +39,7 @@ if [ "$RUN_DAEMON" != "yes" ] && [ "$1" != "stop" ]; then
 	exit 0
 fi
 
-DAEMON_ARGS="--config $CONFIG --background --drop-privs $USER:$GROUP"
+DAEMON_ARGS="--config $CONFIG --background --drop-privs $INADYN_USER:$INADYN_GROUP"
 
 create_cache_dir() {
     # Create the cache empty dir if necessary
