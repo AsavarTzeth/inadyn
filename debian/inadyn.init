@@ -29,12 +29,12 @@ CONFIG=/etc/$NAME.conf
 . /lib/lsb/init-functions
 
 # Set defaults values if no DEFAULT exist
-NO_START=${NO_START:-yes}
+RUN_DAEMON=${RUN_DAEMON:-no}
 USER=${USER:-inadyn}
 GROUP=${GROUP:-inadyn}
 
-# Start the daemon if NO_START is disabled in DEFAULT
-if [ "$NO_START" = "yes" ] && [ "$1" != "stop" ]; then
+# Start the daemon if RUN_DAEMON is enabled in DEFAULT
+if [ "$RUN_DAEMON" != "yes" ] && [ "$1" != "stop" ]; then
 	log_warning_msg "$NAME: Not starting. Disabled in $DEFAULT"
 	exit 0
 fi
