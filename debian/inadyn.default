@@ -2,5 +2,5 @@
 NO_START="yes"
 
 # The user and group that inadyn should be run as.
-USER="inadyn"
-GROUP="inadyn"
+USER="debian-inadyn"
+GROUP="debian-inadyn"

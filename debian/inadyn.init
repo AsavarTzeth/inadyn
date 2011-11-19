@@ -30,8 +30,8 @@ CONFIG=/etc/$NAME.conf
 
 # Set defaults values if no DEFAULT exist
 NO_START=${NO_START:-yes}
-USER=${USER:-inadyn}
-GROUP=${GROUP:-inadyn}
+USER=${USER:-debian-inadyn}
+GROUP=${GROUP:-debian-inadyn}
 
 # Start the daemon if NO_START is disabled in DEFAULT
 if [ "$NO_START" = "yes" ] && [ "$1" != "stop" ]; then

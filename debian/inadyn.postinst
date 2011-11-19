@@ -9,36 +9,36 @@ CONF=/etc/$NAME.conf
 
 if [ "$1" = "configure" ]
 then
-	# Create inadyn group if it isn't already there
-	if ! getent group inadyn >/dev/null
+	# Create debian-inadyn group if it isn't already there
+	if ! getent group debian-inadyn >/dev/null
 	then
-		# Add system group: inadyn
-		addgroup --system inadyn >/dev/null
+		# Add system group: debian-inadyn
+		addgroup --system debian-inadyn >/dev/null
 	fi
 
-	# Create inadyn user if it isn't already there
-	if ! getent passwd inadyn >/dev/null
+	# Create debian-inadyn user if it isn't already there
+	if ! getent passwd debian-inadyn >/dev/null
 	then
-		# Add system user: inadyn
+		# Add system user: debian-inadyn
 		adduser \
 		 --system \
-		 --ingroup inadyn \
+		 --ingroup debian-inadyn \
 		 --home $RUNDIR \
 		 --no-create-home \
 		 --gecos "INADYN DynDNS client" \
 		 --shell /bin/false \
 		 --disabled-login \
 		 --disabled-password \
-		 inadyn >/dev/null
+		 debian-inadyn >/dev/null
 	fi
 
 	if ! dpkg-statoverride --list $LOGDIR >/dev/null 2>&1
 	then
-		dpkg-statoverride --update --add inadyn inadyn 755 $LOGDIR
+		dpkg-statoverride --update --add debian-inadyn debian-inadyn 755 $LOGDIR
 	fi
 	if ! dpkg-statoverride --list $CONF >/dev/null 2>&1
 	then
-		dpkg-statoverride --update --add root inadyn 640 $CONF
+		dpkg-statoverride --update --add root debian-inadyn 640 $CONF
 	fi
 fi
 
