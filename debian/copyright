@@ -42,7 +42,7 @@ License: other
     Licensing: this file is basically free to use in any way as long the above
     copyright notice is kept.
 
-Files: src/md5.c, include/md5.h
+Files: src/md5.c include/md5.h
 Copyright: 1995 Ulrich Drepper <drepper@gnu.ai.mit.edu>
 License: GPL-2+
 
