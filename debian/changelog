@@ -1,10 +1,9 @@
-inadyn (1.98.0-1) unstable; urgency=low
+inadyn (1.98.1-1) unstable; urgency=low
 
-  * New upstream release:
+  * New upstream release (Closes: #647703):
     - network timeout was fixed. Closes: #539240.
     - use symbolic persona instead of numeric uid/gid. Closes: #355276.
-    - man/inadyn.8: fix typo in the example for freedns.afraid.org.
-      Closes: #575549.
+    - man/inadyn.8: fix typos. Closes: #575549, #627970.
   * Update source package in accordance with the version 3.0 (quilt).
   * debian/control:
     - bump Standards-Version to 3.9.2 (no changes needed).
@@ -30,7 +29,7 @@ inadyn (1.98.0-1) unstable; urgency=low
   * debian/inadyn.post{inst,rm}: create inadyn user in inadyn group.
   * Provide dyndns-client virtual package. Closes: #433822.
 
- -- Timur Birsh <taem@linukz.org>  Mon, 25 Apr 2011 15:07:53 +0600
+ -- Timur Birsh <taem@linukz.org>  Sat, 19 Nov 2011 14:00:53 +0600
 
 inadyn (1.96.2-1) unstable; urgency=low
 
