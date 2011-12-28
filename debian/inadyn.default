@@ -10,5 +10,5 @@ RUN_DAEMON="no"
 RUN_IPUP="no"
 
 # The user and group that inadyn should be run as.
-INADYN_USER="debian-inadyn"
-INADYN_GROUP="debian-inadyn"
+USER="debian-inadyn"
+GROUP="debian-inadyn"
