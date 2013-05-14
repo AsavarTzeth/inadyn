@@ -34,6 +34,7 @@
 .Op Fl N, -server-name Ar SERVER Ns Op : Ns Ar PORT
 .Op Fl U, -server-url Ar PATH
 .Op Fl S, -system Ar PROVIDER
+.Op Fl t, -test
 .Op Fl T, -period Ar SEC
 .Op Fl u, -username Ar USERNAME
 .Op Fl p, -password Ar PASSWORD
@@ -188,12 +189,21 @@ Set interface to bind to. Only on UNIX systems.
 Set pidfile, defaults to
 .Pa /var/run/inadyn/inadyn.pid .
 .It Fl e, -exec Ar SCRIPT
-Full path to external command, or script, to run after a successful DDNS update.
+Full path to external command, or script, to run after a successful
+DDNS update.
+.Ar SCRIPT
+can use following environment variables: INADYN_IP,
+INADYN_HOSTNAME. First environment variable contains new IP address,
+second one - host name alias. INADYN_IFACE is available, if
+.Fl -iface
+option used.
 .It Fl w, -wildcard
 Enable domain name wildcarding for dyndns.org, 3322.org, or easydns.com. Default
 disabled. For
 .Nm inadyn
 < 1.96.3 wildcarding was enabled by default.
+.It Fl t, -test
+Force one update and quit.
 .El
 .Sh "TYPICAL USAGE"
 .Ss http://www.dyndns.org
@@ -300,14 +310,14 @@ upon startup.
 .br
 The
 .Nm inadyn
-home page is http://troglobit.com/inadyn.shtml.
+home page is http://github.com/troglobit/inadyn
 .Sh AUTHORS
 .Nm inadyn
 was written by
 .An -nosplit
 .An Narcis Ilisei Aq inarcis2002@hotpop.com ,
 .An Steve Horbachuk and later
-.An Joachim Nilsson Aq troglobit@vmlinux.org .
+.An Joachim Nilsson Aq troglobit@gmail.com .
 .Pp
 This manual page was initially written for the
 .Em Debian GNU/Linux

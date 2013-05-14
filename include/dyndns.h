@@ -28,7 +28,7 @@
 
 #define DYNDNS_VERSION_STRING	"Inadyn version " VERSION_STRING " -- Dynamic DNS update client."
 #define DYNDNS_AGENT_NAME	"inadyn/" VERSION_STRING
-#define DYNDNS_EMAIL_ADDR	"troglobit@vmlinux.org"
+#define DYNDNS_EMAIL_ADDR	"troglobit@gmail.com"
 
 typedef enum
 {
@@ -55,6 +55,7 @@ typedef enum
 #define DYNDNS_DEFAULT_CONFIG_FILE	"/etc/inadyn.conf"
 #define DYNDNS_RUNTIME_DATA_DIR		"/var/run/inadyn"
 #define DYNDNS_DEFAULT_CACHE_FILE	DYNDNS_RUNTIME_DATA_DIR"/inadyn.cache"
+#define DYNDNS_CACHE_FILE		DYNDNS_RUNTIME_DATA_DIR"/%s.cache"
 #define DYNDNS_DEFAULT_PIDFILE		DYNDNS_RUNTIME_DATA_DIR"/inadyn.pid"
 
 #define DYNDNS_MY_USERNAME		"test"
@@ -314,10 +315,12 @@ typedef struct DYN_DNS_CLIENT
 	int          total_iterations;
 	int          num_iterations;
 	char        *interface;
+	char        *cache_file;
 	BOOL         initialized;
 	BOOL         run_in_background;
 	BOOL         debug_to_syslog;
 	BOOL         change_persona;
+	BOOL         test_update;
 
 	HTTP_CLIENT       http_to_ip_server[DYNDNS_MAX_SERVER_NUMBER];
 	HTTP_CLIENT       http_to_dyndns[DYNDNS_MAX_SERVER_NUMBER];

@@ -762,12 +762,12 @@ static RC_TYPE do_update_alias_table(DYN_DNS_CLIENT *p_self)
 	}
 
 	/* Successful change or when cache file does not yet exist! */
-	if (anychange || access(DYNDNS_DEFAULT_CACHE_FILE, F_OK))
+	if (anychange || access(p_self->cache_file, F_OK))
 	{
 		FILE *fp;
 
 		/* Update cache with new IP */
-		fp = fopen(DYNDNS_DEFAULT_CACHE_FILE, "w");
+		fp = fopen(p_self->cache_file, "w");
 		if (fp)
 		{
 			fprintf(fp, "%s", p_self->info[0].my_ip_address.name);
@@ -782,7 +782,10 @@ static RC_TYPE do_update_alias_table(DYN_DNS_CLIENT *p_self)
 			/* Run external command hook on update. */
 			if (p_self->external_command)
 			{
-				os_shell_execute(p_self->external_command);
+				os_shell_execute(p_self->external_command,
+						 p_self->info[0].my_ip_address.name,
+						 p_self->info[0].alias_info[0].names.name,
+						 p_self->interface);
 			}
 		}
 	}
@@ -1047,6 +1050,36 @@ RC_TYPE dyn_dns_destruct(DYN_DNS_CLIENT *p_self)
 		i++;
 	}
 
+	if (p_self->cfgfile != NULL)
+	{
+		free(p_self->cfgfile);
+		p_self->cfgfile = NULL;
+	}
+
+	if (p_self->pidfile != NULL)
+	{
+		free(p_self->pidfile);
+		p_self->pidfile = NULL;
+	}
+
+	if (p_self->external_command != NULL)
+	{
+		free(p_self->external_command);
+		p_self->external_command = NULL;
+	}
+
+	if (p_self->interface != NULL)
+	{
+		free(p_self->interface);
+		p_self->interface = NULL;
+	}
+
+	if (p_self->cache_file != NULL)
+	{
+		free(p_self->cache_file);
+		p_self->cache_file = NULL;
+	}
+
 	/* Save old value, if restarted by SIGHUP */
 	cached_times_since_last_update = p_self->times_since_last_update;
 	cached_num_iterations = p_self->num_iterations;
@@ -1305,7 +1338,7 @@ int dyn_dns_main(DYN_DNS_CLIENT *p_dyndns, int argc, char* argv[])
 	 * DDNS server record, since we might get locked out for abuse, so we "seed"
 	 * each of the DDNS records of our struct with the cached IP# from our cache
 	 * file, or from a regular DNS query. */
-	fp = fopen(DYNDNS_DEFAULT_CACHE_FILE, "r");
+	fp = fopen(p_dyndns->cache_file, "r");
 	if (!fp)
 	{
 		struct addrinfo hints;
@@ -1369,6 +1402,9 @@ int dyn_dns_main(DYN_DNS_CLIENT *p_dyndns, int argc, char* argv[])
 		{
 			break;
 		}
+
+		if (p_dyndns->test_update == TRUE)
+			p_dyndns->force_addr_update = TRUE;
 
 		/* DDNS client main loop */
 		while (1)
