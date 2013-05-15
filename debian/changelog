@@ -26,7 +26,8 @@ inadyn (1.98.1-1) unstable; urgency=low
   * debian/inadyn.conf: use example config from the upstream README.
   * debian/inadyn.init,
     debian/inadyn.default: add init script. Closes: #421114.
-  * debian/inadyn.post{inst,rm}: create inadyn user in inadyn group.
+  * debian/inadyn.post{inst,rm}: create debian-inadyn user in
+    debian-inadyn group.
   * Provide dyndns-client virtual package. Closes: #433822.
 
  -- Timur Birsh <taem@linukz.org>  Sat, 19 Nov 2011 14:00:53 +0600
