@@ -44,4 +44,4 @@ inadyn (1.98.1-1) unstable; urgency=low
     NO_START to "no" in /etc/default/inadyn.
   * By default inadyn logs messages to the file /var/log/inadyn/inadyn.log.
 
- -- Timur Birsh <taem@linukz.org>  Sat, 19 Nov 2011 14:00:53 +0600
+ -- Timur Birsh <taem@linukz.org>  Wed, 15 May 2013 17:12:34 +0600
