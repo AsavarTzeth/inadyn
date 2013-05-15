@@ -5,7 +5,7 @@ Maintainer: Timur Birsh <taem@linukz.org>
 Build-Depends: debhelper (>= 7.0.50~)
 Standards-Version: 3.9.4
 Homepage: http://troglobit.com/inadyn.shtml
-Vcs-Git: git://github.com/taem/inadyn.git
+Vcs-Git: git://github.com/taem/inadyn.git -b debian
 Vcs-Browser: http://github.com/taem/inadyn
 
 Package: inadyn
