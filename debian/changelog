@@ -6,7 +6,7 @@ inadyn (1.98.1-1) unstable; urgency=low
     - man/inadyn.8: fix typos. Closes: #575549, #627970.
   * Update source package in accordance with the version 3.0 (quilt).
   * debian/control:
-    - bump Standards-Version to 3.9.2 (no changes needed).
+    - bump Standards-Version to 3.9.4 (no changes needed).
     - bump debhelper build dependency to 7.0.50~ (needed by debhelper's
       override mechanism).
     - add Vcs-* fields.
