@@ -1,8 +1,8 @@
 #!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          inadyn
-# Required-Start:    $network $local_fs $remote_fs
-# Required-Stop:     $network $local_fs $remote_fs
+# Required-Start:    $network $local_fs $remote_fs $syslog
+# Required-Stop:     $network $local_fs $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: DynDNS client
@@ -15,7 +15,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="DynDNS client"
 NAME=inadyn
 DAEMON=/usr/bin/inadyn
-CACHEDIR=/var/run/$NAME
+CACHEDIR=/run/$NAME
 PIDFILE=$CACHEDIR/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DEFAULT=/etc/default/$NAME
@@ -33,13 +33,15 @@ RUN_DAEMON=${RUN_DAEMON:-no}
 USER=${USER:-debian-inadyn}
 GROUP=${GROUP:-debian-inadyn}
 
-# Start the daemon if RUN_DAEMON is enabled in DEFAULT
 if [ "$RUN_DAEMON" != "yes" ] && [ "$1" != "stop" ]; then
 	log_warning_msg "$NAME: Not starting. Disabled in $DEFAULT"
 	exit 0
 fi
 
-DAEMON_ARGS="--config $CONFIG --background --drop-privs $INADYN_USER:$INADYN_GROUP"
+DAEMON_ARGS="--pidfile $PIDFILE \
+             --config $CONFIG \
+             --background \
+             --drop-privs $INADYN_USER:$INADYN_GROUP"
 
 create_cache_dir() {
     # Create the cache empty dir if necessary
