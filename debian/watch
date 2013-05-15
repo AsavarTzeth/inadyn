@@ -1,2 +1,2 @@
 version=3
-ftp://ftp.vmlinux.org/pub/People/jocke/inadyn/inadyn-(.*)\.tar\.bz2
+https://github.com/troglobit/inadyn/tags .*/v?(\d[\d\.]+)\.tar\.gz
