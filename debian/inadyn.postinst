@@ -3,7 +3,7 @@
 set -e
 
 NAME=inadyn
-RUNDIR=/var/run/$NAME
+RUNDIR=/run/$NAME
 LOGDIR=/var/log/$NAME
 CONF=/etc/$NAME.conf
 

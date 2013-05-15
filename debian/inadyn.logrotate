@@ -6,6 +6,6 @@
 	missingok
 	notifempty
         postrotate
-                [ ! -f /var/run/inadyn/inadyn.pid ] || kill -HUP `cat /var/run/inadyn/inadyn.pid`
+                [ ! -f /run/inadyn/inadyn.pid ] || kill -HUP `cat /run/inadyn/inadyn.pid`
         endscript
 }
