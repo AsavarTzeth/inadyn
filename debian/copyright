@@ -1,13 +1,13 @@
-Format: http://dep.debian.net/deps/dep5
-Upstream-Name: inadyn - dynamic DNS client
-Upstream-Contact: Joachim Nilsson <troglobit@vmlinux.org>
-Source: http://troglobit.com/inadyn.shtml
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: inadyn - simple and small DynDNS client written in the C language
+Upstream-Contact: Joachim Nilsson <troglobit@gmail.com>
+Source: http://github.com/troglobit/inadyn
 
 Files: *
 Copyright: 2004 Narcis Ilisei <inarcis2002@hotpop.com>
 	   2006 Steve Horbachuk
 	   2009 Christoph Brill <egore911@egore911.de>
-	   2010 Joachim Nilsson <troglobit@vmlinux.org>
+	   2010 Joachim Nilsson <troglobit@gmail.com>
 	   2010 Timur Birsh <taem@linukz.org>
 License: GPL-2+
 
@@ -48,7 +48,7 @@ License: GPL-2+
 
 Files: debian/*
 Copyright: 2005 Shaul Karl <shaul@debian.org>
-	   2010 Timur Birsh <taem@linukz.org>
+	   2010-2013 Timur Birsh <taem@linukz.org>
 License: GPL-2+
 
 License: GPL-2+
