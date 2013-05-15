@@ -5,6 +5,7 @@ inadyn (1.98.1-1) unstable; urgency=low
     - use symbolic persona instead of numeric uid/gid. Closes: #355276.
     - man/inadyn.8: fix typos. Closes: #575549, #627970.
   * Update source package in accordance with the version 3.0 (quilt).
+    Closes: #664352.
   * debian/control:
     - bump Standards-Version to 3.9.4 (no changes needed).
     - bump debhelper build dependency to 9 (needed by debhelper's
