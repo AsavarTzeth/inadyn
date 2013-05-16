@@ -30,6 +30,7 @@ inadyn (1.98.1+git20130515-1) unstable; urgency=low
   * debian/inadyn.post{inst,rm}: create debian-inadyn user in
     debian-inadyn group.
   * Provide dyndns-client virtual package. Closes: #433822.
+  * debian/source/options: use xz compression.
 
  -- Timur Birsh <taem@linukz.org>  Wed, 15 May 2013 17:11:44 +0600
 
