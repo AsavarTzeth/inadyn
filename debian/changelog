@@ -1,4 +1,4 @@
-inadyn (1.98.1-1) unstable; urgency=low
+inadyn (1.98.1+git20130515-1) unstable; urgency=low
 
   * New upstream release (Closes: #647703):
     - network timeout was fixed. Closes: #539240.
