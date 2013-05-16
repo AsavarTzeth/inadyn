@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 #-*- makefile -*-
 
+export VERSION=1.98.1+git20130515
+
 %:
 	dh $@
 
