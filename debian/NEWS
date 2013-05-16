@@ -1,14 +1,16 @@
 inadyn (1.98.1+git20130515-1) unstable; urgency=low
 
-  * New upstream release is based on the several sources: original INADYN
-    implementation from Narcis Ilisei, INADYN by Christoph Brill
-    (https://sourceforge.net/projects/inadyn/), inadyn-advanced
-    (https://sourceforge.net/projects/inadyn-advanced/),
-    Neufbox4 patches from http://dev.efixo.net, wl500g patches from
-    http://code.google.com/p/wl500g, patch by Christian Eyrich (multiple
-    accounts) and patches by Timur Birsh (https://github.com/taem/inadyn).
-  * New upstream homepage is http://github.com/troglobit/inadyn.
-  * The following DDNS providers added:
+  New upstream release is based on the several sources: original INADYN
+  implementation from Narcis Ilisei, INADYN by Christoph Brill
+  (https://sourceforge.net/projects/inadyn/), inadyn-advanced
+  (https://sourceforge.net/projects/inadyn-advanced/),
+  Neufbox4 patches from http://dev.efixo.net, wl500g patches from
+  http://code.google.com/p/wl500g, patch by Christian Eyrich (multiple
+  accounts) and patches by Timur Birsh (https://github.com/taem/inadyn).
+
+  New upstream homepage is http://github.com/troglobit/inadyn.
+
+  The following DDNS providers added:
     - http://www.3322.org
     - http://www.easydns.org
     - http://www.tzo.com
@@ -16,7 +18,8 @@ inadyn (1.98.1+git20130515-1) unstable; urgency=low
     - https://dns.he.net/
     - http://www.dynsip.org
     - http://www.sitelutions.com
-  * New options:
+
+  New options:
     - pidfile <FILE>
       path to the pidfile, defaults to /run/inadyn/inadyn.pid.
     - iface <IFNAME>
@@ -29,7 +32,8 @@ inadyn (1.98.1+git20130515-1) unstable; urgency=low
       Default disabled.
     - test
       Force one update and quit.
-  * Renamed options (former --> new):
+
+  Renamed options (former --> new):
     - dyndns_system --> system
     - update_period_sec --> period
     - log_file --> logfile
@@ -40,11 +44,13 @@ inadyn (1.98.1+git20130515-1) unstable; urgency=low
     - dyndns_server_url --> server-url
     - proxy_server --> proxy-server
     - forced_update_period --> forced-update
-  * Old option names supported.
-  * A drop-privs option now accepts username and groupname instead of
-    the uid/gid.
-  * Now inadyn can start on boot. Please edit /etc/inadyn.conf, then set
-    RUN_DAEMON to "yes" in /etc/default/inadyn.
-  * By default inadyn logs messages to the file /var/log/inadyn/inadyn.log.
+  Old option names supported.
+
+  A drop-privs option now accepts username and groupname instead of the uid/gid.
+
+  Now inadyn can start on boot. Please edit /etc/inadyn.conf, then set
+  RUN_DAEMON to "yes" in /etc/default/inadyn.
+
+  By default inadyn logs messages to the file /var/log/inadyn/inadyn.log.
 
  -- Timur Birsh <taem@linukz.org>  Wed, 15 May 2013 17:12:34 +0600
