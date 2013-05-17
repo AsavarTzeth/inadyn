@@ -1,4 +1,4 @@
-inadyn (1.98.1+git20130515-1) unstable; urgency=low
+inadyn (1.98.1+git20130517-1) unstable; urgency=low
 
   * New upstream release (Closes: #647703):
     - network timeout was fixed. Closes: #539240.
@@ -32,7 +32,7 @@ inadyn (1.98.1+git20130515-1) unstable; urgency=low
   * Provide dyndns-client virtual package. Closes: #433822.
   * debian/source/options: use xz compression.
 
- -- Timur Birsh <taem@linukz.org>  Wed, 15 May 2013 17:11:44 +0600
+ -- Timur Birsh <taem@linukz.org>  Fri, 17 May 2013 16:58:56 +0600
 
 inadyn (1.96.2-1) unstable; urgency=low
 
