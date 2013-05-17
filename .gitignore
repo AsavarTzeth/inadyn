@@ -48,3 +48,4 @@ debian/inadyn.debhelper.log
 debian/inadyn.*.debhelper
 debian/inadyn.substvars
 debian/inadyn/
+/.pc
