@@ -1,0 +1,40 @@
+From 02c803d0d5b50eba56a9e1cdfed7cf621e7bf842 Mon Sep 17 00:00:00 2001
+From: Timur Birsh <taem@linukz.org>
+Date: Thu, 16 May 2013 13:07:10 +0600
+Subject: [PATCH] Use minus sign instead of hyphen
+
+It is needed for correct formatting in UTF-8 locale.
+See http://lists.debian.org/debian-devel/2003/debian-devel-200303/msg01481.html
+for details.
+---
+ man/inadyn.conf.5 |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/man/inadyn.conf.5 b/man/inadyn.conf.5
+index f4c4f95..71f483e 100644
+--- a/man/inadyn.conf.5
++++ b/man/inadyn.conf.5
+@@ -43,15 +43,15 @@ The \\ character can be used as an escape character.
+ .Ss 1.  Config file with long options
+ # Some comments about the inadyn conf file
+ .br
+---username test
++\-\-username test
+ .br
+---password test
++\-\-password test
+ .br
+---period 60
++\-\-period 60
+ .br
+---alias test.homeip.net
++\-\-alias test.homeip.net
+ .br
+---alias my.second.domain
++\-\-alias my.second.domain
+ .Ss 2.  Config file without Dq \-\-
+ username test # user
+ .br
+-- 
+1.7.10.4
+

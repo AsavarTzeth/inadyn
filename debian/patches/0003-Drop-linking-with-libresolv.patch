@@ -1,0 +1,25 @@
+From 2555810548ade9d068f05285cf8ecc1ea03ee72e Mon Sep 17 00:00:00 2001
+From: Timur Birsh <taem@linukz.org>
+Date: Thu, 16 May 2013 15:08:18 +0600
+Subject: [PATCH 3/3] Drop linking with libresolv
+
+---
+ Makefile |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index c296209..31be8eb 100644
+--- a/Makefile
++++ b/Makefile
+@@ -30,7 +30,7 @@ CFLAGS       ?= -g -O2
+ CFLAGS       := -W -Wall -Iinclude -DVERSION_STRING=\"$(VERSION)\" $(CFG_INC) $(CFLAGS) $(EXTRA_CFLAGS)
+ CPPFLAGS     ?=
+ LDFLAGS      ?=
+-LDLIBS       += -lresolv $(EXTRA_LIBS)
++LDLIBS       += $(EXTRA_LIBS)
+ DISTFILES     = README COPYING LICENSE
+ 
+ # Pattern rules
+-- 
+1.7.10.4
+
