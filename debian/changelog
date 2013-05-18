@@ -1,3 +1,17 @@
+inadyn (1.98.1+git20130517-2) unstable; urgency=low
+
+  * debian/inadyn.{init,ppp.ip-up}:
+    - change $INADYN_{USER,GROUP} to $USER and $GROUP. Closes: #708734.
+  * debian/inadyn.ppp.ip-up:
+    - env vars should be checked after sourcing inadyn's defaults file.
+  * debian/inadyn.postinst:
+    - remove accidentally left code snippet. Closes: #708735.
+  * debian/inadyn.init:
+    - do not warn if daemon is disabled in $DEFAULT.
+      User can use PPP ip-up script instead of the daemon.
+
+ -- Timur Birsh <taem@linukz.org>  Sat, 18 May 2013 14:16:53 +0600
+
 inadyn (1.98.1+git20130517-1) unstable; urgency=low
 
   * New upstream release (Closes: #647703):
