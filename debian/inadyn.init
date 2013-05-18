@@ -41,7 +41,7 @@ fi
 DAEMON_ARGS="--pidfile $PIDFILE \
              --config $CONFIG \
              --background \
-             --drop-privs $INADYN_USER:$INADYN_GROUP"
+             --drop-privs $USER:$GROUP"
 
 create_cache_dir() {
     # Create the cache empty dir if necessary

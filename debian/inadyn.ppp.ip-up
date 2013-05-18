@@ -18,8 +18,8 @@ if [ ! -x /usr/bin/inadyn ]; then
 fi
 
 RUN_IPUP=${RUN_IPUP:-no}
-INADYN_USER=${INADYN_USER:-debian-inadyn}
-INADYN_GROUP=${INADYN_GROUP:-debian-inadyn}
+USER=${USER:-debian-inadyn}
+GROUP=${GROUP:-debian-inadyn}
 
 # Check, if this script is activated
 if [ -r /etc/default/inadyn ]; then
@@ -45,4 +45,4 @@ fi
 
 # Run inadyn
 /usr/bin/inadyn --config /etc/inadyn.conf --iterations 1 \
-    --drop-privs $INADYN_USER:$INADYN_GROUP
+    --drop-privs $USER:$GROUP
