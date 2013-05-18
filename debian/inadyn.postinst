@@ -35,7 +35,6 @@ then
 	if ! dpkg-statoverride --list $LOGDIR >/dev/null 2>&1
 	then
 		dpkg-statoverride --update --add debian-inadyn debian-inadyn 755 $LOGDIR
-                    debian-inadyn 755 $LOGDIR
 	fi
 	if ! dpkg-statoverride --list $CONF >/dev/null 2>&1
 	then
