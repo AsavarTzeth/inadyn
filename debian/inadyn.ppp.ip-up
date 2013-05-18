@@ -17,13 +17,14 @@ if [ ! -x /usr/bin/inadyn ]; then
   exit 0
 fi
 
-RUN_IPUP=${RUN_IPUP:-no}
-USER=${USER:-debian-inadyn}
-GROUP=${GROUP:-debian-inadyn}
-
 # Check, if this script is activated
 if [ -r /etc/default/inadyn ]; then
   . /etc/default/inadyn
+
+  RUN_IPUP=${RUN_IPUP:-no}
+  USER=${USER:-debian-inadyn}
+  GROUP=${GROUP:-debian-inadyn}
+
   if [ ! $RUN_IPUP = "yes" ]; then
     exit 0
   fi
