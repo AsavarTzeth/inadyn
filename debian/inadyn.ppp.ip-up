@@ -46,4 +46,4 @@ fi
 
 # Run inadyn
 /usr/bin/inadyn --config /etc/inadyn.conf --iterations 1 \
-    --drop-privs $USER:$GROUP
+    --drop-privs $USER:$GROUP --pidfile /tmp/inadyn.pid
