@@ -34,7 +34,7 @@ USER=${USER:-debian-inadyn}
 GROUP=${GROUP:-debian-inadyn}
 
 if [ "$RUN_DAEMON" != "yes" ] && [ "$1" != "stop" ]; then
-	log_success_msg "$NAME: Not starting. Disabled in $DEFAULT"
+	log_action_msg "$NAME: Not starting. Disabled in $DEFAULT"
 	exit 0
 fi
 
