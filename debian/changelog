@@ -1,3 +1,9 @@
+inadyn (1.98.1+git20130517-2~bpo60+1) squeeze-backports; urgency=low
+
+  * Rebuild for squeeze-backports.
+
+ -- Timur Birsh <taem@linukz.org>  Thu, 06 Jun 2013 14:19:12 +0600
+
 inadyn (1.98.1+git20130517-2) unstable; urgency=low
 
   * debian/inadyn.{init,ppp.ip-up}:
