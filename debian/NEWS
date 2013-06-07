@@ -1,3 +1,16 @@
+inadyn (1.98.1+git20130517-3) unstable; urgency=low
+
+  This release fixes the following bugs: #709391, #711226. The installation
+  script checks the owner id and group id of the directory /run/inadyn and
+  if that user or group is root, then they changed to the debian-inadyn, which
+  by default are used for inadyn.
+
+  If you have created a custom user/group, you need to set up the $USER/$GROUP
+  in the file /etc/default/inadyn. Or change user/group of /run/inadyn
+  directory to debian-inadyn.
+
+ -- Timur Birsh <taem@linukz.org>  Fri, 07 Jun 2013 11:14:41 +0600
+
 inadyn (1.98.1+git20130517-1) unstable; urgency=low
 
   New upstream release is based on the several sources: original INADYN

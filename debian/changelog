@@ -1,3 +1,16 @@
+inadyn (1.98.1+git20130517-3) unstable; urgency=low
+
+  * Fix problem with /run/inadyn access when upgrading from 1.96.2-1.
+    Closes: #709391, #711226.
+  * debian/inadyn.ppp.ip-up:
+    - write PID into /tmp/inadyn.pid.
+  * debian/control:
+    - add full list of the supported services to extended description.
+  * debian/inadyn.init:
+    - use log_action_msg() instead of log_success_msg().
+
+ -- Timur Birsh <taem@linukz.org>  Fri, 07 Jun 2013 11:40:43 +0600
+
 inadyn (1.98.1+git20130517-2) unstable; urgency=low
 
   * debian/inadyn.{init,ppp.ip-up}:
