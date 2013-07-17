@@ -1,7 +1,8 @@
 # Makefile for INADYN, a simple and small ddns client.          -*-Makefile-*-
+# Use "make V=1" to see full GCC output
 
 #VERSION      ?= $(shell git tag -l | tail -1)
-VERSION      ?= 1.98.1
+VERSION      ?= 1.99.3
 NAME          = inadyn
 EXEC          = src/$(NAME)
 PKG           = $(NAME)-$(VERSION)
@@ -22,26 +23,29 @@ mandir        = $(prefix)/share/man
 #include <config.mk>
 include config.mk
 
-BASE_OBJS     = src/base64utils.o src/md5.o src/dyndns.o src/errorcode.o src/get_cmd.o \
-		src/http_client.o src/ip.o src/main.o src/os_unix.o src/os_windows.o   \
-		src/os.o src/os_psos.o src/tcp.o src/inadyn_cmd.o
+BASE_OBJS     = src/base64.o src/md5.o src/dyndns.o src/errorcode.o src/get_cmd.o    \
+		src/http_client.o src/ip.o src/main.o src/os_unix.o src/os_windows.o \
+		src/os.o src/os_psos.o src/tcp.o src/inadyn_cmd.o src/sha1.o
 OBJS	      = $(BASE_OBJS) $(CFG_OBJ) $(EXTRA_OBJS)
-CFLAGS        = -Iinclude -DVERSION_STRING=\"$(VERSION)\" $(CFG_INC) $(EXTRA_CFLAGS)
-CFLAGS       += -O2 -W -Wall
-LDLIBS       += -lresolv $(EXTRA_LIBS)
+CFLAGS       ?= -O2 -W -Wall -Werror
+CFLAGS       += $(CFG_INC) $(EXTRA_CFLAGS)
+CPPFLAGS     ?=
+CPPFLAGS     += -Iinclude -DVERSION_STRING=\"$(VERSION)\"
+LDFLAGS      ?=
+LDLIBS       += $(EXTRA_LIBS)
 DISTFILES     = README COPYING LICENSE
 
 # Pattern rules
 .c.o:
-	@printf "  CC      $@\n"
-	@$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(PRINTF) "  CC      $@\n"
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 # Build rules
 all: $(EXEC)
 
 $(EXEC): $(OBJS)
-	@printf "  LINK    $@\n"
-	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+	$(PRINTF) "  LINK    $@\n"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 install: $(EXEC)
 	@install -d $(DESTDIR)$(prefix)/sbin

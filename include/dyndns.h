@@ -32,9 +32,6 @@
 
 typedef enum
 {
-	DYNDNS_DYNAMIC,
-	DYNDNS_STATIC,
-	DYNDNS_CUSTOM,
 	DYNDNS_DEFAULT,
 	FREEDNS_AFRAID_ORG_DEFAULT,
 	ZONE_EDIT_DEFAULT,
@@ -45,7 +42,10 @@ typedef enum
 	DYNDNS_3322_DYNAMIC,
 	SITELUTIONS_DOMAIN,
 	DNSOMATIC_DEFAULT,
+	DNSEXIT_DEFAULT,
 	HE_IPV6TB,
+	HE_DYNDNS,
+	CHANGEIP_DEFAULT,
 	DYNSIP_DEFAULT,
 	LAST_DNS_SYSTEM = -1
 } DYNDNS_SYSTEM_ID;
@@ -58,58 +58,46 @@ typedef enum
 #define DYNDNS_CACHE_FILE		DYNDNS_RUNTIME_DATA_DIR"/%s.cache"
 #define DYNDNS_DEFAULT_PIDFILE		DYNDNS_RUNTIME_DATA_DIR"/inadyn.pid"
 
-#define DYNDNS_MY_USERNAME		"test"
-#define DYNDNS_MY_PASSWD		"test"
 #define DYNDNS_MY_IP_SERVER		"checkip.dyndns.org"
 #define DYNDNS_MY_IP_SERVER_URL		"/"
-#define DYNDNS_MY_DNS_SERVER		"members.dyndns.org"
-#define DYNDNS_MY_DNS_SERVER_URL	"/nic/update?"
-#define DYNDNS_MY_HOST_NAME_1		"test.homeip.net"
-#define DYNDNS_MY_HOST_NAME_2		"test2.homeip.net"
-
-/* botho 30/07/06 : add www.3322.org */
-#define DYNDNS_3322_MY_IP_SERVER	"bliao.com"
-#define DYNDNS_3322_MY_IP_SERVER_URL	"/ip.phtml"
-#define DYNDNS_3322_MY_DNS_SERVER	"members.3322.org"
-#define DYNDNS_3322_MY_DNS_SERVER_URL	"/dyndns/update?"
 
 /*REQ/RSP definitions*/
 
-#define DYNDNS_IP_SERVER_RESPONSE_BEGIN "Current IP Address: "
-#define DYNDNS_IP_ADDR_FORMAT		"%d.%d.%d.%d"
-#define DYNDNS_ALL_DIGITS		"0123456789"
-
-
-#define DYNDNS_SYSTEM_CUSTOM		"custom"
-#define DYNDNS_SYSTEM_DYNAMIC		"dyndns"
-#define DYNDNS_SYSTEM_STATIC		"statdns"
-
-#define GENERIC_DNS_IP_SERVER_NAME	DYNDNS_MY_IP_SERVER
-#define DYNDNS_MY_DNS_SYSTEM		DYNDNS_DEFAULT
+#define DYNDNS_DEFAULT_DNS_SYSTEM	DYNDNS_DEFAULT
 
 /* Conversation with the IP server */
-#define DYNDNS_GET_MY_IP_HTTP_REQUEST  \
-	"GET http://%s%s HTTP/1.0\r\n\r\n"
+#define DYNDNS_GET_IP_HTTP_REQUEST  \
+	"GET %s HTTP/1.0\r\n"						\
+	"Host: %s\r\n"							\
+	"User-Agent: " DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR "\r\n\r\n"
+
+#define GENERIC_HTTP_REQUEST                                      \
+	"GET %s HTTP/1.0\r\n"						\
+	"Host: %s\r\n"							\
+	"User-Agent: " DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR "\r\n\r\n"
+
+#define GENERIC_AUTH_HTTP_REQUEST					\
+	"GET %s HTTP/1.0\r\n"						\
+	"Host: %s\r\n"							\
+	"Authorization: Basic %s\r\n"					\
+	"User-Agent: " DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR "\r\n\r\n"
 
 /* dyndns.org specific update address format
  * 3322.org has the same parameters ... */
-#define DYNDNS_GET_MY_IP_HTTP_REQUEST_FORMAT				\
-	"GET %s"							\
-	"system=%s&"							\
+#define DYNDNS_UPDATE_IP_HTTP_REQUEST					\
+	"GET %s?"							\
 	"hostname=%s&"							\
-	"myip=%s&"							\
-	"wildcard=%s&"							\
-	"mx=%s&"							\
-	"backmx=NO&"							\
-	"offline=NO "							\
+	"myip=%s "							\
 	"HTTP/1.0\r\n"							\
 	"Host: %s\r\n"							\
 	"Authorization: Basic %s\r\n"					\
 	"User-Agent: " DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR "\r\n\r\n"
 
 /* freedns.afraid.org specific update request format */
-#define FREEDNS_UPDATE_MY_IP_REQUEST_FORMAT				\
-	"GET %s%s "							\
+#define FREEDNS_UPDATE_IP_REQUEST					\
+	"GET %s?"							\
+	"%s&"								\
+	"address=%s "							\
 	"HTTP/1.0\r\n"							\
 	"Host: %s\r\n"							\
 	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
@@ -121,79 +109,97 @@ typedef enum
 	and then the normal http stuff and basic base64 encoded auth.
 	The parameter here is the entire request but NOT including the alias.
 */
-#define GENERIC_DNS_BASIC_AUTH_MY_IP_REQUEST_FORMAT			\
-	"GET %s%s "							\
+#define GENERIC_BASIC_AUTH_UPDATE_IP_REQUEST				\
+	"GET %s"							\
+	"%s "								\
 	"HTTP/1.0\r\n"							\
-	"Authorization: Basic %s\r\n"					\
 	"Host: %s\r\n"							\
+	"Authorization: Basic %s\r\n"					\
 	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
 
-#define GENERIC_NOIP_AUTH_MY_IP_REQUEST_FORMAT				\
-	"GET %s%s&myip=%s "						\
+#define ZONEEDIT_UPDATE_IP_REQUEST					\
+	"GET %s?"						\
+	"host=%s&"							\
+	"dnsto=%s "							\
 	"HTTP/1.0\r\n"							\
-	"Authorization: Basic %s\r\n"					\
 	"Host: %s\r\n"							\
-	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
-
-#define GENERIC_ZONEEDIT_AUTH_MY_IP_REQUEST_FORMAT			\
-	"GET %s%s&dnsto=%s "						\
-	"HTTP/1.0\r\n"							\
 	"Authorization: Basic %s\r\n"					\
-	"Host: %s\r\n"							\
 	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
 
 /* dont ask me why easydns is so picky
  * http://support.easydns.com/tutorials/dynamicUpdateSpecs.php */
-#define GENERIC_EASYDNS_AUTH_MY_IP_REQUEST_FORMAT			\
-	"GET %s%s&"							\
+#define EASYDNS_UPDATE_IP_REQUEST				\
+	"GET %s?"							\
+	"hostname=%s&"							\
 	"myip=%s&"							\
 	"wildcard=%s "							\
 	"HTTP/1.0\r\n"							\
-	"Authorization: Basic %s\r\n"					\
 	"Host: %s\r\n"							\
+	"Authorization: Basic %s\r\n"					\
 	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
 
 /* tzo doesnt encode password */
-#define GENERIC_TZO_AUTH_MY_IP_REQUEST_FORMAT				\
-	"GET %s%s&"							\
-	"Email=%s&"							\
-	"TZOKey=%s&"							\
-	"IPAddress=%s "							\
+#define TZO_UPDATE_IP_REQUEST						\
+	"GET %s?"							\
+	"tzoname=%s&"							\
+	"email=%s&"							\
+	"tzokey=%s&"							\
+	"ipaddress=%s&"							\
+	"system=tzodns&"							\
+	"info=1 "							\
 	"HTTP/1.0\r\n"							\
 	"Host: %s\r\n"							\
 	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
 
 /* sitelutions.com specific update address format */
-#define SITELUTIONS_GET_MY_IP_HTTP_REQUEST_FORMAT			\
-	"GET %s"							\
+#define SITELUTIONS_UPDATE_IP_HTTP_REQUEST				\
+	"GET %s?"							\
 	"user=%s&"							\
 	"pass=%s&"							\
 	"id=%s&"							\
-	"detectip=1&"							\
+	"ip=%s "							\
+	"HTTP/1.0\r\n"							\
+	"Host: %s\r\n"							\
+	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
+
+#define DNSEXIT_UPDATE_IP_HTTP_REQUEST					\
+	"GET %s?"							\
+	"login=%s&"							\
+	"password=%s&"							\
+	"host=%s&"							\
+	"myip=%s "							\
 	"HTTP/1.0\r\n"							\
 	"Host: %s\r\n"							\
 	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
 
 /* HE tunnelbroker.com specific update request format */
-#define HE_IPV6TB_UPDATE_MY_IP_REQUEST_FORMAT				\
-	"GET %s"							\
-	"ipv4b=%s&"							\
-	"user_id=%s&"							\
+#define HE_IPV6TB_UPDATE_IP_REQUEST					\
+	"GET %s?"							\
+	"ip=%s&"							\
+	"apikey=%s&"							\
 	"pass=%s&"							\
-	"tunnel_id=%s "							\
+	"tid=%s "							\
 	"HTTP/1.0\r\n"							\
 	"Host: %s\r\n"							\
 	"User-Agent: "DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR"\r\n\r\n"
 
-#define DYNDNS_OK_RESPONSE	"good"
-#define DYNDNS_OK_NOCHANGE	"nochg"
+#define CHANGEIP_UPDATE_IP_HTTP_REQUEST					\
+	"GET %s?"							\
+	"system=dyndns&"						\
+	"hostname=%s&"							\
+	"myip=%s "							\
+	"HTTP/1.0\r\n"							\
+	"Host: %s\r\n"							\
+	"Authorization: Basic %s\r\n"					\
+	"User-Agent: " DYNDNS_AGENT_NAME " " DYNDNS_EMAIL_ADDR "\r\n\r\n"
 
 
-/* SOME DEFAULT CONFIGURATIONS */
+/* Some default configurations */
 #define DYNDNS_DEFAULT_SLEEP			(120) /* sec */
 #define DYNDNS_MIN_SLEEP			(30)  /* sec */
 #define DYNDNS_MAX_SLEEP			(10 * 24 * 3600) /* 10 days in sec */
-#define DYNDNS_MY_FORCED_UPDATE_PERIOD_S	(30 * 24 * 3600) /* 30 days in sec */
+#define DYNDNS_ERROR_UPDATE_PERIOD		(600) /* 10 min */
+#define DYNDNS_FORCED_UPDATE_PERIOD		(30 * 24 * 3600) /* 30 days in sec */
 #define DYNDNS_DEFAULT_CMD_CHECK_PERIOD		(1)    /* sec */
 #define DYNDNS_DEFAULT_ITERATIONS		0      /* Forever */
 #define DYNDNS_HTTP_RESPONSE_BUFFER_SIZE	(2500) /* Bytes */
@@ -207,7 +213,6 @@ typedef enum
 #define DYNDNS_MY_PASSWORD_LENGTH		50  /* chars */
 #define DYNDNS_SERVER_NAME_LENGTH		256 /* chars */
 #define DYNDNS_SERVER_URL_LENGTH		256 /* chars */
-#define DYNDNS_HASH_STRING_MAX_LENGTH		256 /* chars */
 #define IP_V4_MAX_LENGTH			16  /* chars: nnn.nnn.nnn.nnn\0 */
 
 
@@ -217,19 +222,17 @@ struct DYNDNS_SYSTEM;
 
 /* Types used for DNS system specific configuration */
 /* Function to prepare DNS system specific server requests */
-typedef int (*DNS_SYSTEM_REQUEST_FUNC)(struct _DYN_DNS_CLIENT *this, int infnr, int alnr, struct DYNDNS_SYSTEM *p_sys_info);
-typedef int (*DNS_SYSTEM_SRV_RESPONSE_OK_FUNC)(struct _DYN_DNS_CLIENT *this, char *p_rsp, int infnr, const char*p_ok_str);
+typedef int (*DNS_SYSTEM_REQUEST_FUNC)(struct _DYN_DNS_CLIENT *this, int infnr, int alnr);
+typedef RC_TYPE (*DNS_SYSTEM_SRV_RESPONSE_OK_FUNC)(struct _DYN_DNS_CLIENT *this, HTTP_TRANSACTION *p_tr, int infnr);
 typedef struct
 {
 	const char* p_key;
-	void* p_specific_data;
 	DNS_SYSTEM_SRV_RESPONSE_OK_FUNC p_rsp_ok_func;
 	DNS_SYSTEM_REQUEST_FUNC p_dns_update_req_func;
 	const char *p_ip_server_name;
 	const char *p_ip_server_url;
 	const char *p_dyndns_server_name;
 	const char *p_dyndns_server_url;
-	const char *p_success_string;
 } DYNDNS_SYSTEM;
 
 typedef struct
@@ -238,23 +241,12 @@ typedef struct
 	DYNDNS_SYSTEM system;
 } DYNDNS_SYSTEM_INFO;
 
-typedef struct
-{
-	const char *p_system;
-} DYNDNS_ORG_SPECIFIC_DATA;
-
 typedef enum
 {
 	NO_CMD = 0,
 	CMD_STOP = 1,
 	CMD_RESTART = 2,
 } DYN_DNS_CMD;
-
-
-typedef struct
-{
-	char str[DYNDNS_HASH_STRING_MAX_LENGTH];
-} DYNDNS_HASH_TYPE;
 
 typedef struct
 {
@@ -276,7 +268,6 @@ typedef struct
 {
 	DYNDNS_SERVER_NAME names;
 	int update_required;
-	DYNDNS_HASH_TYPE hashes;
 } DYNDNS_ALIAS_INFO;
 
 typedef struct
@@ -285,13 +276,14 @@ typedef struct
 	DYNDNS_SERVER_NAME  my_ip_address;
 	DYNDNS_CREDENTIALS  credentials;
 	DYNDNS_SYSTEM      *p_dns_system;
-	DYNDNS_SERVER_NAME  dyndns_server_name;
+	DYNDNS_SERVER_NAME  dyndns_server_name; /* Address of DDNS update service */
 	char                dyndns_server_url[DYNDNS_SERVER_URL_LENGTH];
-	DYNDNS_SERVER_NAME  ip_server_name;
+	DYNDNS_SERVER_NAME  ip_server_name;     /* Address of "What's my IP" checker */
 	char                ip_server_url[DYNDNS_SERVER_URL_LENGTH];
 	DYNDNS_SERVER_NAME  proxy_server_name;
 	DYNDNS_ALIAS_INFO   alias_info[DYNDNS_MAX_ALIAS_NUMBER];
 	int                 alias_count;
+	BOOL wildcard;
 } DYNDNS_INFO_TYPE;
 
 typedef struct
@@ -308,14 +300,16 @@ typedef struct DYN_DNS_CLIENT
 
 	DYN_DNS_CMD  cmd;
 	int          sleep_sec; /* time between 2 updates*/
+	int          normal_update_period_sec;
+	int          error_update_period_sec;
 	int          forced_update_period_sec;
-	int          times_since_last_update;
-	int          forced_update_times; /* the same forced update period counted in sleep periods*/
+	int          time_since_last_update;
 	int          cmd_check_period; /*time to wait for a command*/
 	int          total_iterations;
 	int          num_iterations;
-	char        *interface;
 	char        *cache_file;
+	char        *bind_interface;
+	char        *check_interface;
 	BOOL         initialized;
 	BOOL         run_in_background;
 	BOOL         debug_to_syslog;
@@ -338,7 +332,6 @@ typedef struct DYN_DNS_CLIENT
 	BOOL force_addr_update;
 	BOOL use_proxy;
 	BOOL abort;
-	BOOL wildcard;
 
 	DBG_TYPE dbg;
 } DYN_DNS_CLIENT;
