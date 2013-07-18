@@ -6,6 +6,9 @@ export VERSION=1.98.1+git20130517
 %:
 	dh $@
 
+override_dh_auto_build:
+	dh_auto_build -- V=1
+
 override_dh_auto_install:
 	dh_install
 
