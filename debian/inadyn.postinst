@@ -55,6 +55,8 @@ then
 
         for item in $LOGDIR/*
         do
+                [ "$item" = "$LOGDIR/*" ] && continue
+
                 own=`stat --printf="%u" "$item" 2>/dev/null`
                 grp=`stat --printf="%g" "$item" 2>/dev/null`
 
@@ -69,6 +71,8 @@ then
         then
                 for item in $RUNDIR $RUNDIR/*
                 do
+                        [ "$item" = "$RUNDIR/*" ] && continue
+
                         own=`stat --printf="%u" "$item" 2>/dev/null`
                         grp=`stat --printf="%g" "$item" 2>/dev/null`
 
