@@ -1,5 +1,10 @@
-inadyn (1.98.1+git20130517-3) unstable; urgency=low
+inadyn (1.99.3-1) unstable; urgency=low
 
+  * New upstream release:
+    - new option --cachefile to specify cache file.
+    - new option --bind to set interface to bind to.
+    - old option --iface used to obtain interface IP
+      with no external IP check.
   * Fix problem with /run/inadyn access when upgrading from 1.96.2-1.
     Closes: #709391, #711226.
   * debian/inadyn.ppp.ip-up:
@@ -8,6 +13,15 @@ inadyn (1.98.1+git20130517-3) unstable; urgency=low
     - add full list of the supported services to extended description.
   * debian/inadyn.init:
     - use log_action_msg() instead of log_success_msg().
+    - fix lintian warning init.d-script-call-internal-API.
+  * debian/docs:
+    - README renamed to README.md.
+  * debian/rules:
+    - tell 'make' do not hide build info.
+  * Drop debian/patches, merged upstream.
+  * Update debian/inadyn.conf.
+  * Add debian/links:
+    - add symlink for /usr/sbin/inadyn to /usr/bin/inadyn.
 
  -- Timur Birsh <taem@linukz.org>  Fri, 07 Jun 2013 11:40:43 +0600
 
