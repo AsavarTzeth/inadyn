@@ -1,3 +1,10 @@
+inadyn (1.99.4-1) unstable; urgency=low
+
+  * New upstream release:
+    - Fix basic HTTP authentication. Closes: #718934.
+
+ -- Timur Birsh <taem@linukz.org>  Fri, 09 Aug 2013 13:31:20 +0600
+
 inadyn (1.99.3-1) unstable; urgency=low
 
   * New upstream release:
