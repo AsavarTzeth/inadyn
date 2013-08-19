@@ -21,7 +21,7 @@ Description: Simple and small DynDNS client written in the C language
  supported is:
    * http://www.dyndns.org
    * http://freedns.afraid.org
-   * http:// www.zoneedit.com
+   * http://www.zoneedit.com
    * http://www.no-ip.com
    * http://www.easydns.com
    * http://www.tzo.com
