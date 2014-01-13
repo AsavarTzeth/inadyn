@@ -1,0 +1,21 @@
+From 72be065026bf3d7a5ebe8738921b748197110f2b Mon Sep 17 00:00:00 2001
+From: Timur Birsh <taem@linukz.org>
+Date: Mon, 13 Jan 2014 23:59:13 +0600
+Subject: [PATCH] Remove empty line
+
+---
+ man/inadyn.8 | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/man/inadyn.8 b/man/inadyn.8
+index 72589f1..1d0aafa 100644
+--- a/man/inadyn.8
++++ b/man/inadyn.8
+@@ -410,4 +410,3 @@ system by
+ Currently maintained by
+ .An -nosplit
+ .An Joachim Nilsson Aq troglobit@gmail.com .
+-
+-- 
+1.8.5.2
+
