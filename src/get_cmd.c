@@ -24,130 +24,103 @@
   Basic, table driven option line parsing.
 */
 
-#define MODULE_TAG ""
 #include <string.h>
 #include <stdlib.h>
 #include "get_cmd.h"
 #include "debug_if.h"
 
-
-static CMD_DESCRIPTION_TYPE * opt_search(CMD_DESCRIPTION_TYPE *p_table, char *p_opt)
+static cmd_desc_t *opt_search(cmd_desc_t *p_table, char *p_opt)
 {
-	CMD_DESCRIPTION_TYPE *it = p_table;
+	cmd_desc_t *it = p_table;
 
-	while( it->p_option != NULL)
-	{
-		if (strcmp(p_opt, it->p_option) == 0)
-		{
+	while (it->option != NULL) {
+		if (strcmp(p_opt, it->option) == 0)
 			return it;
-		}
-		++it;
+
+		it++;
 	}
 
 	return NULL;
 }
 
 /**
-   Init the CMD_DATA
+   Init the cmd_data_t
 */
-RC_TYPE cmd_init(CMD_DATA *p_cmd)
+int cmd_init(cmd_data_t *cmd)
 {
-	if (!p_cmd)
-	{
+	if (!cmd)
 		return RC_INVALID_POINTER;
-	}
 
-	memset(p_cmd, 0, sizeof(*p_cmd));
+	memset(cmd, 0, sizeof(*cmd));
 
-	return RC_OK;
+	return 0;
 }
 
-RC_TYPE cmd_destruct(CMD_DATA *p_cmd)
+int cmd_destruct(cmd_data_t *cmd)
 {
-	if (!p_cmd)
-	{
+	if (!cmd)
 		return RC_INVALID_POINTER;
-	}
 
-	if (p_cmd->argv)
-	{
+	if (cmd->argv) {
 		int i;
 
-		for (i = 0; i < p_cmd->argc; ++i)
-		{
-			if (p_cmd->argv[i])
-			{
-				free(p_cmd->argv[i]);
-			}
+		for (i = 0; i < cmd->argc; ++i) {
+			if (cmd->argv[i])
+				free(cmd->argv[i]);
 		}
-		free(p_cmd->argv);
+		free(cmd->argv);
 	}
 
-	return RC_OK;
+	return 0;
 }
 
 /** Adds a new option (string) to the command line
  */
-RC_TYPE cmd_add_val(CMD_DATA *p_cmd, char *p_val)
+int cmd_add_val(cmd_data_t *cmd, char *p_val)
 {
-	RC_TYPE rc = RC_OK;
+	char *p, **pp;
 
-	if (!p_cmd || !p_val)
-	{
+	if (!cmd || !p_val)
 		return RC_INVALID_POINTER;
-	}
 
-	do
-	{
-		char *p;
-		char **pp = (char **)realloc(p_cmd->argv, (p_cmd->argc + 1) * sizeof(char *));
-		if (!pp)
-		{
-			rc = RC_OUT_OF_MEMORY;
-			break;
-		}
-		p_cmd->argv = pp;
+	pp = realloc(cmd->argv, (cmd->argc + 1) * sizeof(char *));
+	if (!pp)
+		return RC_OUT_OF_MEMORY;
 
-		p = (char *)malloc(strlen(p_val) + 1);
-		if (!p)
-		{
-			rc = RC_OUT_OF_MEMORY;
-			break;
-		}
+	cmd->argv = pp;
 
-		strcpy(p, p_val);
-		p_cmd->argv[p_cmd->argc] = p;
-		p_cmd->argc ++;
-	}
-	while (0);
+	p = malloc(strlen(p_val) + 1);
+	if (!p)
+		return RC_OUT_OF_MEMORY;
 
-	return rc;
+	strcpy(p, p_val);
+	cmd->argv[cmd->argc] = p;
+	cmd->argc++;
+
+	return 0;
 }
+
 /** Creates a struct of argvals from the given command line.
     Action:
-    copy the argv from the command line to the given CMD_DATA struct
+    copy the argv from the command line to the given cmd_data_t struct
     set the data val of the list element to the current argv
 */
-RC_TYPE cmd_add_vals_from_argv(CMD_DATA *p_cmd, char **argv, int argc)
+int cmd_add_vals_from_argv(cmd_data_t *cmd, char **argv, int argc)
 {
 	int i;
-	RC_TYPE rc = RC_OK;
+	int rc = 0;
 
-	if (!p_cmd || !argv || !argc)
-	{
+	if (!cmd || !argv || !argc)
 		return RC_INVALID_POINTER;
-	}
 
-	for (i = 0; i < argc; ++i)
-	{
-		rc = cmd_add_val(p_cmd, argv[i]);
-		if (rc != RC_OK)
+	for (i = 0; i < argc; ++i) {
+		rc = cmd_add_val(cmd, argv[i]);
+		if (rc != 0)
 			break;
 	}
 
 	return rc;
 }
-
 
 /*
   Parses the incoming argv list.
@@ -156,7 +129,7 @@ RC_TYPE cmd_add_vals_from_argv(CMD_DATA *p_cmd, char **argv, int argc)
   cmd description
 
   Action:
-  performs a match for every p_option string in the CMD description.
+  performs a match for every option string in the CMD description.
   checks the number of arguments left
   calls the user handler with the pointer to the correct arguments
 
@@ -166,64 +139,52 @@ RC_TYPE cmd_add_vals_from_argv(CMD_DATA *p_cmd, char **argv, int argc)
   - check the required number of arguments
   - call the handler
 */
-RC_TYPE get_cmd_parse_data(char **argv, int argc, CMD_DESCRIPTION_TYPE *p_cmd_descr)
+int get_cmd_parse_data(char **argv, int argc, cmd_desc_t *desc)
 {
-	RC_TYPE rc = RC_OK;
-	CMD_DATA cmd;
-	int curr_arg_nr = 1; /* without the prg name*/
+	int rc = 0;
+	cmd_data_t cmd;
+	int current = 1;	/* Skip daemon name */
 
-	if (argv == NULL || p_cmd_descr == NULL)
-	{
+	if (argv == NULL || desc == NULL)
 		return RC_INVALID_POINTER;
-	}
 
-	do
-	{
+	do {
 		rc = cmd_init(&cmd);
-		if (rc != RC_OK)
-		{
+		if (rc != 0)
 			break;
-		}
 
 		rc = cmd_add_vals_from_argv(&cmd, argv, argc);
-		if (rc != RC_OK)
-		{
+		if (rc != 0)
 			break;
-		}
 
-	 	while (curr_arg_nr < cmd.argc)
-		{
-			CMD_DESCRIPTION_TYPE *p_curr_opt = opt_search(p_cmd_descr, cmd.argv[curr_arg_nr]);
+		while (current < cmd.argc) {
+			cmd_desc_t *ptr = opt_search(desc, cmd.argv[current]);
 
-			if (p_curr_opt == NULL)
-			{
+			if (ptr == NULL) {
 				rc = RC_CMD_PARSER_INVALID_OPTION;
-				logit(LOG_WARNING, MODULE_TAG "Invalid option name at position %d: %s",
-				      curr_arg_nr + 1, cmd.argv[curr_arg_nr]);
+				logit(LOG_WARNING,
+				      "Invalid option name at position %d: %s", current + 1, cmd.argv[current]);
 				break;
 			}
+//                      logit(LOG_NOTICE, "Found opt %d: %s", current, cmd.argv[current]);
 
-//			logit(LOG_NOTICE, MODULE_TAG "Found opt %d: %s", curr_arg_nr, cmd.argv[curr_arg_nr]);
+			++current;
 
-			++curr_arg_nr;
-
-			/*check arg nr required by the current option*/
-			if (curr_arg_nr + p_curr_opt->arg_nr > cmd.argc)
-			{
+			/*check arg nr required by the current option */
+			if (current + ptr->argno > cmd.argc) {
 				rc = RC_CMD_PARSER_INVALID_OPTION_ARGUMENT;
-				logit(LOG_WARNING, MODULE_TAG "Missing option value at position %d: %s",
-				      curr_arg_nr + 1, p_curr_opt->p_option);
+				logit(LOG_WARNING,
+				      "Missing option value at position %d: %s", current + 1, ptr->option);
 				break;
 			}
 
-			rc = p_curr_opt->p_handler.p_func(&cmd, curr_arg_nr, p_curr_opt->p_handler.p_context);
-			if (rc != RC_OK)
-			{
-				logit(LOG_WARNING, MODULE_TAG "Error parsing option %s", cmd.argv[curr_arg_nr - 1]);
+			rc = ptr->handler.func(&cmd, current, ptr->handler.context);
+			if (rc != 0) {
+				logit(LOG_WARNING, "Error parsing option %s", cmd.argv[current - 1]);
 				break;
 			}
 
-			curr_arg_nr += p_curr_opt->arg_nr;
+			current += ptr->argno;
 		}
 	}
 	while (0);
@@ -237,7 +198,6 @@ RC_TYPE get_cmd_parse_data(char **argv, int argc, CMD_DESCRIPTION_TYPE *p_cmd_de
  * Local Variables:
  *  version-control: t
  *  indent-tabs-mode: t
- *  c-file-style: "ellemtel"
- *  c-basic-offset: 8
+ *  c-file-style: "linux"
  * End:
  */

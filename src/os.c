@@ -32,70 +32,64 @@
     DBG_SYS_LOG for SysLog
     DBG_STD_LOG for standard console
 */
-static DBG_DEST global_mod_dbg_dest = DBG_STD_LOG;
+static int global_mod_dbg_dest = DBG_STD_LOG;
 /**
     Returns the dbg destination.
     DBG_SYS_LOG for SysLog
     DBG_STD_LOG for standard console
 */
-DBG_DEST get_dbg_dest(void)
+int get_dbg_dest(void)
 {
-    return global_mod_dbg_dest;
+	return global_mod_dbg_dest;
 }
 
-void set_dbg_dest(DBG_DEST dest)
+void set_dbg_dest(int dest)
 {
-    global_mod_dbg_dest = dest;
+	global_mod_dbg_dest = dest;
 }
 
 static char *current_time(void)
 {
-    time_t now;
-    struct tm *timeptr;
-    static const char wday_name[7][3] = {
-	"Sun", "Mon", "Tue", "Wed",
-	"Thu", "Fri", "Sat"
-    };
-    static const char mon_name[12][3] = {
-	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    };
-    static char result[26];
+	time_t now;
+	struct tm *timeptr;
+	static const char wday_name[7][3] = {
+		"Sun", "Mon", "Tue", "Wed",
+		"Thu", "Fri", "Sat"
+	};
+	static const char mon_name[12][3] = {
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+	};
+	static char result[26];
 
-    time(&now);
-    timeptr = localtime(&now);
+	time(&now);
+	timeptr = localtime(&now);
 
-    sprintf(result, "%.3s %.3s%3d %.2d:%.2d:%.2d %d:",
-	wday_name[timeptr->tm_wday], mon_name[timeptr->tm_mon],
-	timeptr->tm_mday, timeptr->tm_hour, timeptr->tm_min,
-	timeptr->tm_sec, 1900 + timeptr->tm_year);
+	sprintf(result, "%.3s %.3s%3d %.2d:%.2d:%.2d %d:",
+		wday_name[timeptr->tm_wday], mon_name[timeptr->tm_mon],
+		timeptr->tm_mday, timeptr->tm_hour, timeptr->tm_min, timeptr->tm_sec, 1900 + timeptr->tm_year);
 
-    return result;
+	return result;
 }
 
-void os_printf(int prio, char *fmt, ... )
+void os_printf(int prio, char *fmt, ...)
 {
-    va_list args;
-    static char message[MAXSTRING + 1];
+	va_list args;
+	static char message[MAXSTRING + 1];
 
-    message[MAXSTRING] = 0;
-    va_start(args, fmt);
-    vsnprintf(message, sizeof(message), fmt, args);
-    va_end(args);
+	message[MAXSTRING] = 0;
+	va_start(args, fmt);
+	vsnprintf(message, sizeof(message), fmt, args);
+	va_end(args);
 
-#ifdef HAVE_OS_SYSLOG
-    if (get_dbg_dest() == DBG_SYS_LOG)
-    {
-	syslog(prio, "%s",message);
-    }
-    else
-#endif
-    {
+	if (get_dbg_dest() == DBG_SYS_LOG) {
+		syslog(prio, "%s", message);
+		return;
+	}
+
 	printf("%s %s\n", current_time(), message);
-        fflush(stdout);
-    }
+	fflush(stdout);
 }
-
 
 /**
  * Opens the dbg output for the required destination.
@@ -105,63 +99,70 @@ void os_printf(int prio, char *fmt, ... )
  * TODO:
  *  some simple solution that involves storing the dbg output device name (and filename)
  */
-RC_TYPE os_open_dbg_output(DBG_DEST dest, const char *p_prg_name, const char *p_logfile_name)
+int os_open_dbg_output(int dest, const char *name, const char *logfile)
 {
-    RC_TYPE rc = RC_OK;
-    set_dbg_dest(dest);
+	int rc = 0;
+	FILE *pF;
 
-    switch (get_dbg_dest())
-    {
-    case DBG_SYS_LOG:
-	if (p_prg_name == NULL)
-	{
-	    rc = RC_INVALID_POINTER;
-	    break;
-	}
-	rc = os_syslog_open(p_prg_name);
-	break;
+	set_dbg_dest(dest);
 
-    case DBG_FILE_LOG:
-	if (p_logfile_name == NULL)
-	{
-	    rc = RC_INVALID_POINTER;
-	    break;
+	switch (get_dbg_dest()) {
+	case DBG_SYS_LOG:
+		if (name == NULL) {
+			rc = RC_INVALID_POINTER;
+			break;
+		}
+		rc = os_syslog_open(name);
+		break;
+
+	case DBG_FILE_LOG:
+		if (logfile == NULL) {
+			rc = RC_INVALID_POINTER;
+			break;
+		}
+
+		pF = freopen(logfile, "ab", stdout);
+		if (pF == NULL)
+			rc = RC_FILE_IO_OPEN_ERROR;
+		break;
+
+	case DBG_STD_LOG:
+	default:
+		rc = 0;
 	}
-	{
-	    FILE *pF = freopen(p_logfile_name, "ab", stdout);
-	    if (pF == NULL)
-	    {
-		rc = RC_FILE_IO_OPEN_ERROR;
-	    }
-	    break;
-	}
-    case DBG_STD_LOG:
-    default:
-	rc = RC_OK;
-    }
-    return rc;
+
+	return rc;
 }
 
 /**
  * Closes the dbg output device.
  */
-RC_TYPE os_close_dbg_output(void)
+int os_close_dbg_output(void)
 {
-    RC_TYPE rc = RC_OK;
-    switch (get_dbg_dest())
-    {
-    case DBG_SYS_LOG:
-	rc = os_syslog_close();
-	break;
+	int rc = 0;
 
-    case DBG_FILE_LOG:
-	fclose(stdout);
-	rc = RC_OK;
-	break;
+	switch (get_dbg_dest()) {
+	case DBG_SYS_LOG:
+		rc = os_syslog_close();
+		break;
 
-    case DBG_STD_LOG:
-    default:
-	rc = RC_OK;
-    }
-    return rc;
+	case DBG_FILE_LOG:
+		fclose(stdout);
+		rc = 0;
+		break;
+
+	case DBG_STD_LOG:
+	default:
+		rc = 0;
+	}
+
+	return rc;
 }
+
+/**
+ * Local Variables:
+ *  version-control: t
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */

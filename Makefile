@@ -2,7 +2,7 @@
 # Use "make V=1" to see full GCC output
 
 #VERSION      ?= $(shell git tag -l | tail -1)
-VERSION      ?= 1.99.4
+VERSION      ?= 1.99.6
 NAME          = inadyn
 EXEC          = src/$(NAME)
 PKG           = $(NAME)-$(VERSION)
@@ -23,9 +23,10 @@ mandir        = $(prefix)/share/man
 #include <config.mk>
 include config.mk
 
-BASE_OBJS     = src/base64.o src/md5.o src/dyndns.o src/errorcode.o src/get_cmd.o    \
-		src/http_client.o src/ip.o src/main.o src/os_unix.o src/os_windows.o \
-		src/os.o src/os_psos.o src/tcp.o src/inadyn_cmd.o src/sha1.o
+BASE_OBJS     = src/base64.o src/md5.o src/dyndns.o src/errorcode.o \
+		src/get_cmd.o src/http.o src/ip.o src/main.o        \
+		src/os_unix.o src/os.o src/tcp.o src/inadyn_cmd.o   \
+	        src/sha1.o
 OBJS	      = $(BASE_OBJS) $(CFG_OBJ) $(EXTRA_OBJS)
 CFLAGS       ?= -O2 -W -Wall -Werror
 CFLAGS       += $(CFG_INC) $(EXTRA_CFLAGS)
@@ -70,7 +71,7 @@ clean:
 	-@$(RM) $(OBJS) $(EXEC)
 
 distclean:
-	-@$(RM) $(OBJS) core $(EXEC) *.o *.map .*.d *.out tags TAGS
+	-@$(RM) $(OBJS) core $(EXEC) src/*~ include/*~ *~ src/*.o *.map src/.*.d *.out tags TAGS
 
 dist:
 	@echo "Building bzip2 tarball of $(PKG) in parent dir..."

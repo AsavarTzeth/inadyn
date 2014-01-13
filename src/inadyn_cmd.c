@@ -17,8 +17,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MODULE_TAG ""
-
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -37,110 +35,124 @@ static int curr_info;
 /* command line options */
 #define DYNDNS_INPUT_FILE_OPT_STRING "--input_file"
 
-static RC_TYPE help_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE test_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_wildcard_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_username_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_password_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_alias_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_dns_server_name_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_dns_server_url_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_ip_server_name_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_dyndns_system_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_update_period_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_update_period_sec_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_forced_update_period_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_logfile_name(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_silent_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_verbose_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_proxy_server_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_options_from_file_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_iterations_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_syslog_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_change_persona_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_bind_interface(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_check_interface(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_pidfile(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE set_cachefile(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE print_version_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
-static RC_TYPE get_exec_handler(CMD_DATA *p_cmd, int current_nr, void *p_context);
+typedef enum {
+	NEW_LINE,
+	COMMENT,
+	DATA,
+	SPACE,
+	ESCAPE
+} state_t;
 
-static CMD_DESCRIPTION_TYPE cmd_options_table[] =
-{
-	{"-a",			1,	{get_alias_handler, NULL},	"" },
-	{"--alias",		1,	{get_alias_handler, NULL},	"<NAME>\n"
-	 "\t\t\tAlias hostname. This option can appear multiple times." },
+typedef struct {
+	FILE *fp;
+	state_t state;
+} cfg_parser_t;
 
-	{"-b",			0,	{set_silent_handler, NULL},	""},
-	{"--background",	0,	{set_silent_handler, NULL},	"Run in background."},
+static int help_handler(cmd_data_t *cmd, int num, void *context);
+static int startup_delay_handler(cmd_data_t *cmd, int num, void *context);
+static int update_once_handler(cmd_data_t *cmd, int num, void *context);
+static int get_wildcard_handler(cmd_data_t *cmd, int num, void *context);
+static int get_username_handler(cmd_data_t *cmd, int num, void *context);
+static int get_password_handler(cmd_data_t *cmd, int num, void *context);
+static int get_alias_handler(cmd_data_t *cmd, int num, void *context);
+static int get_dns_server_name_handler(cmd_data_t *cmd, int num, void *context);
+static int get_dns_server_url_handler(cmd_data_t *cmd, int num, void *context);
+static int get_ip_server_name_handler(cmd_data_t *cmd, int num, void *context);
+static int get_dyndns_system_handler(cmd_data_t *cmd, int num, void *context);
+static int get_update_period_handler(cmd_data_t *cmd, int num, void *context);
+static int get_update_period_sec_handler(cmd_data_t *cmd, int num, void *context);
+static int get_forced_update_period_handler(cmd_data_t *cmd, int num, void *context);
+static int forced_update_fake_addr(cmd_data_t *cmd, int num, void *context);
+static int get_logfile_name(cmd_data_t *cmd, int num, void *context);
+static int set_silent_handler(cmd_data_t *cmd, int num, void *context);
+static int set_verbose_handler(cmd_data_t *cmd, int num, void *context);
+static int get_proxy_server_handler(cmd_data_t *cmd, int num, void *context);
+static int get_options_from_file_handler(cmd_data_t *cmd, int num, void *context);
+static int set_iterations_handler(cmd_data_t *cmd, int num, void *context);
+static int set_syslog_handler(cmd_data_t *cmd, int num, void *context);
+static int set_change_persona_handler(cmd_data_t *cmd, int num, void *context);
+static int set_bind_interface(cmd_data_t *cmd, int num, void *context);
+static int set_check_interface(cmd_data_t *cmd, int num, void *context);
+static int set_pidfile(cmd_data_t *cmd, int num, void *context);
+static int set_cachefile(cmd_data_t *cmd, int num, void *context);
+static int print_version_handler(cmd_data_t *cmd, int num, void *context);
+static int get_exec_handler(cmd_data_t *cmd, int num, void *context);
 
-	{"-B",			1,	{set_bind_interface, NULL}, ""},
-	{"--bind",		1,	{set_bind_interface, NULL}, "<IFNAME>\n"
+static cmd_desc_t cmd_options_table[] = {
+	{"-a", 1, {get_alias_handler, NULL}, ""},
+	{"--alias", 1, {get_alias_handler, NULL}, "<NAME>\n"
+	 "\t\t\tAlias hostname. This option can appear multiple times."},
+
+	{"-b", 0, {set_silent_handler, NULL}, ""},
+	{"--background", 0, {set_silent_handler, NULL}, "Run in background."},
+
+	{"-B", 1, {set_bind_interface, NULL}, ""},
+	{"--bind", 1, {set_bind_interface, NULL}, "<IFNAME>\n"
 	 "\t\t\tSet interface to bind to, only on UNIX systems."},
 
-	{"-c",                  1,      {set_cachefile, NULL}, ""},
-	{"--cachefile",         1,      {set_cachefile, NULL}, "<FILE>\n"
+	{"-c", 1, {set_cachefile, NULL}, ""},
+	{"--cachefile", 1, {set_cachefile, NULL}, "<FILE>\n"
 	 "\t\t\tSet cachefile, default " DYNDNS_DEFAULT_CACHE_FILE},
 
-	{"-d",			1,	{set_change_persona_handler, NULL}, ""},
-	{"--drop-privs", 	1,	{set_change_persona_handler, NULL}, "<USER[:GROUP]>\n"
-	 "\t\t\tAfter init switch to a new user/group.\n"
-	 "\t\t\tOnly on UNIX systems."},
-	{"--change_persona", 	1,	{set_change_persona_handler, NULL}, NULL}, /* COMPAT */
+	{"-d", 1, {set_change_persona_handler, NULL}, ""},
+	{"--drop-privs", 1, {set_change_persona_handler, NULL},
+	 "<USER[:GROUP]>\n" "\t\t\tAfter init switch to a new user/group.\n" "\t\t\tOnly on UNIX systems."},
+	{"--change_persona", 1, {set_change_persona_handler, NULL}, NULL},	/* COMPAT */
 
-	{"-e",			1,	{get_exec_handler, NULL}, ""},
-	{"--exec",		1,	{get_exec_handler, NULL}, "Full path to external command to run after an IP update."},
+	{"-e", 1, {get_exec_handler, NULL}, ""},
+	{"--exec", 1, {get_exec_handler, NULL},
+	 "Full path to external command to run after an IP update."},
 
-	{"-f",			   1,   {get_forced_update_period_handler, NULL}, ""},
-	{"--forced-update",        1,   {get_forced_update_period_handler, NULL}, "<SEC>\n"
-	 "\t\t\tForced DDNS server update interval. Default: 1 week"},
-	{"--forced_update_period", 1,   {get_forced_update_period_handler, NULL}, NULL}, /* COMPAT */
+	{"-f", 1, {get_forced_update_period_handler, NULL}, ""},
+	{"--forced-update", 1, {get_forced_update_period_handler, NULL},
+	 "<SEC>\n" "\t\t\tForced DDNS server update interval. Default: 30 days"},
+	{"--forced_update_period", 1, {get_forced_update_period_handler, NULL}, NULL},	/* COMPAT */
 
-	{"-F",				1, {get_options_from_file_handler, NULL}, ""},
-	{"--config",			1, {get_options_from_file_handler, NULL}, "<FILE>\n"
+	{"-F", 1, {get_options_from_file_handler, NULL}, ""},
+	{"--config", 1, {get_options_from_file_handler, NULL}, "<FILE>\n"
 	 "\t\t\tConfiguration file, containing further options.  Default\n"
-	 "\t\t\tconfig file: " DYNDNS_DEFAULT_CONFIG_FILE ", is used if inadyn is\n"
-	 "\t\t\tcalled without any command line options." },
-	{DYNDNS_INPUT_FILE_OPT_STRING,	1, {get_options_from_file_handler, NULL}, NULL},
+	 "\t\t\tconfig file: " DYNDNS_DEFAULT_CONFIG_FILE
+	 ", is used if inadyn is\n" "\t\t\tcalled without any command line options."},
+	{DYNDNS_INPUT_FILE_OPT_STRING, 1, {get_options_from_file_handler, NULL},
+	 NULL},
 
-	{"-H",			2, {get_ip_server_name_handler, NULL}, ""},
-	{"--checkip-url",	2, {get_ip_server_name_handler, NULL}, "<NAME[:PORT] URL>\n"
+	{"-H", 2, {get_ip_server_name_handler, NULL}, ""},
+	{"--checkip-url", 2, {get_ip_server_name_handler, NULL},
+	 "<NAME[:PORT] URL>\n"
 	 "\t\t\tLocal IP is detected by parsing the response after\n"
 	 "\t\t\treturned by this server and URL.  The first IP found\n"
-	 "\t\t\tin the HTTP response is considered 'my IP'.\n"
-	 "\t\t\tDefault value: 'checkip.dyndns.org /'"},
-	{"--ip_server_name",	2, {get_ip_server_name_handler, NULL}, NULL},
+	 "\t\t\tin the HTTP response is considered 'my IP'.\n" "\t\t\tDefault value: 'checkip.dyndns.org /'"},
+	{"--ip_server_name", 2, {get_ip_server_name_handler, NULL}, NULL},
 
-	{"-n",			1,	{set_iterations_handler, NULL},	""},
-	{"--iterations",	1,	{set_iterations_handler, NULL},	"<NUM>\n"
+	{"-n", 1, {set_iterations_handler, NULL}, ""},
+	{"--iterations", 1, {set_iterations_handler, NULL}, "<NUM>\n"
 	 "\t\t\tSet the number of DNS updates. Default: 0 (forever)"},
 
-	{"-i",			1,	{set_check_interface, NULL}, ""},
-	{"--iface",		1,	{set_check_interface, NULL}, "<IFNAME>\n"
+	{"-i", 1, {set_check_interface, NULL}, ""},
+	{"--iface", 1, {set_check_interface, NULL}, "<IFNAME>\n"
 	 "\t\t\tSet interface to check for IP, only on UNIX systems.\n"
 	 "\t\t\tExternal IP check is not performed."},
 
-	{"-L",			1,	{get_logfile_name, NULL}, ""},
-	{"--logfile",		1,	{get_logfile_name, NULL}, "<FILE>\n"
-	 "\t\t\tFull path to log file"},
-	{"--log_file",		1,	{get_logfile_name, NULL}, NULL},
+	{"-L", 1, {get_logfile_name, NULL}, ""},
+	{"--logfile", 1, {get_logfile_name, NULL}, "<FILE>\n" "\t\t\tFull path to log file"},
+	{"--log_file", 1, {get_logfile_name, NULL}, NULL},
 
-	{"-N",		 	 1, {get_dns_server_name_handler, NULL}, ""},
-	{"--server-name", 	 1, {get_dns_server_name_handler, NULL}, "[<NAME>[:port]]\n"
+	{"-N", 1, {get_dns_server_name_handler, NULL}, ""},
+	{"--server-name", 1, {get_dns_server_name_handler, NULL},
+	 "[<NAME>[:port]]\n"
 	 "\t\t\tThe server that receives the update DNS request.\n"
 	 "\t\t\tAllows the use of unknown DNS services that accept HTTP\n"
 	 "\t\t\tupdates.  If no proxy is wanted, then it is enough to\n"
 	 "\t\t\tset the dyndns system.  Default servers will be taken."},
 	{"--dyndns_server_name", 1, {get_dns_server_name_handler, NULL}, NULL},
 
-	{"-U",		 	1, {get_dns_server_url_handler, NULL}, ""},
-	{"--server-url", 	1, {get_dns_server_url_handler, NULL}, "<URL>\n"
-	 "\t\t\tFull URL relative to DynDNS server root.\n"
-	 "\t\t\tEx: /some_script.php?hostname=\n"},
+	{"-U", 1, {get_dns_server_url_handler, NULL}, ""},
+	{"--server-url", 1, {get_dns_server_url_handler, NULL}, "<URL>\n"
+	 "\t\t\tFull URL relative to DynDNS server root.\n" "\t\t\tEx: /some_script.php?hostname=\n"},
 	{"--dyndns_server_url", 1, {get_dns_server_url_handler, NULL}, NULL},
 
-	{"-S",			1,	{get_dyndns_system_handler, NULL}, ""},
-	{"--system",		1,	{get_dyndns_system_handler, NULL}, "<PROVIDER>\n"
+	{"-S", 1, {get_dyndns_system_handler, NULL}, ""},
+	{"--system", 1, {get_dyndns_system_handler, NULL}, "<PROVIDER>\n"
 	 "\t\t\tSelect DDNS service provider, one of the following.\n"
 	 "\t\t\to For dyndns.org:         default@dyndns.org\n"
 	 "\t\t\to For freedns.afraid.org: default@freedns.afraid.org\n"
@@ -154,246 +166,266 @@ static CMD_DESCRIPTION_TYPE cmd_options_table[] =
 	 "\t\t\to For dns.he.net:         dyndns@he.net\n"
 	 "\t\t\to For dynsip.org:         default@dynsip.org\n"
 	 "\t\t\to For sitelutions.com:    default@sitelutions.com\n"
-	 "\t\t\to For dnsexit.com:   	  default@dnsexit.com\n"
-	 "\t\t\to For generic:            custom@http_svr_basic_auth\n\n"
+	 "\t\t\to For dnsexit.com:        default@dnsexit.com\n"
+	 "\t\t\to For generic:            custom@http_srv_basic_auth\n\n"
 	 "\t\t\tDefault value:            default@dyndns.org"},
-	{"--dyndns_system",	1,	{get_dyndns_system_handler, NULL}, NULL},
+	{"--dyndns_system", 1, {get_dyndns_system_handler, NULL}, NULL},
 
-	{"-x",			1,	{get_proxy_server_handler, NULL}, ""},
-	{"--proxy-server",	1,	{get_proxy_server_handler, NULL}, "[NAME[:port]]\n"
-	 "\t\t\tHTTP proxy server name, and optional port. Default: N/A"},
-	{"--proxy_server",	1,	{get_proxy_server_handler, NULL}, NULL}, /* COMPAT */
+	{"-x", 1, {get_proxy_server_handler, NULL}, ""},
+	{"--proxy-server", 1, {get_proxy_server_handler, NULL},
+	 "[NAME[:port]]\n" "\t\t\tHTTP proxy server name, and optional port. Default: N/A"},
+	{"--proxy_server", 1, {get_proxy_server_handler, NULL}, NULL},	/* COMPAT */
 
-	{"-T",			1,	{get_update_period_sec_handler, NULL},	""},
-	{"--period",		1,	{get_update_period_sec_handler, NULL},	"<SEC>\n"
+	{"-T", 1, {get_update_period_sec_handler, NULL}, ""},
+	{"--period", 1, {get_update_period_sec_handler, NULL}, "<SEC>\n"
 	 "\t\t\tIP change check interval.  Default: 2 min. Max: 10 days"},
-	{"--update_period_sec",	1,	{get_update_period_sec_handler, NULL},	NULL},
-	{"--update_period",	1,	{get_update_period_handler, NULL},      NULL},
+	{"--update_period_sec", 1, {get_update_period_sec_handler, NULL}, NULL},
+	{"--update_period", 1, {get_update_period_handler, NULL}, NULL}, /* TODO: Replaced with startup-delay, remove in 2.0 */
 
-	{"-P",			1,	{set_pidfile, NULL}, ""},
-	{"--pidfile",		1,	{set_pidfile, NULL}, "<FILE>\n"
-	 "\t\t\tSet pidfile, default " DYNDNS_DEFAULT_PIDFILE},
+	{"-P", 1, {set_pidfile, NULL}, ""},
+	{"--pidfile", 1, {set_pidfile, NULL}, "<FILE>\n" "\t\t\tSet pidfile, default " DYNDNS_DEFAULT_PIDFILE},
 
-	{"-s",			0,	{set_syslog_handler, NULL}, ""},
-	{"--syslog",		0,	{set_syslog_handler, NULL},
+	{"-s", 0, {set_syslog_handler, NULL}, ""},
+	{"--syslog", 0, {set_syslog_handler, NULL},
 	 "Force logging to syslog, e.g., /var/log/messages, only on UNIX systems"},
 
-	{"-t",			0,	{test_handler, NULL}, ""},
-	{"--test",		0,	{test_handler, NULL}, "Force one update and quit."},
+	{"-t", 1, {startup_delay_handler, NULL}, ""},
+	{"--startup-delay", 1, {startup_delay_handler, NULL}, "<SEC>\n"
+	 "\t\t\tWait for network/NTP to come up at boot.  Default: 0 sec"},
 
-	{"-u",			1,	{get_username_handler, NULL},	""},
-	{"--username",		1,	{get_username_handler, NULL},	"<USERNAME>\n"
-	 "\t\t\tYour DDNS user name, or hash"},
+	{"-o", 0, {update_once_handler, NULL}, ""},
+	{"--once", 0, {update_once_handler, NULL},
+	 "Force one update and quit."},
 
-	{"-p",			1,	{get_password_handler, NULL},	""},
-	{"--password",		1,	{get_password_handler, NULL},	"<PASSWORD>\n"
-	 "\t\t\tYour DDNS user password."},
+	{"-u", 1, {get_username_handler, NULL}, ""},
+	{"--username", 1, {get_username_handler, NULL}, "<USERNAME>\n" "\t\t\tYour DDNS user name, or hash"},
 
-	{"-w",			0,	{get_wildcard_handler, NULL}, ""},
-	{"--wildcard",		0,	{get_wildcard_handler, NULL}, "Enable domain wildcarding for easydns.com."},
+	{"-p", 1, {get_password_handler, NULL}, ""},
+	{"--password", 1, {get_password_handler, NULL}, "<PASSWORD>\n" "\t\t\tYour DDNS user password."},
 
-	{"-h",			0,	{help_handler, NULL},	"" },
-	{"--help",		0,	{help_handler, NULL},	"This online help." },
+	{"-w", 0, {get_wildcard_handler, NULL}, ""},
+	{"--wildcard", 0, {get_wildcard_handler, NULL},
+	 "Enable domain wildcarding for easydns.com."},
 
-	{"-V",			1,	{set_verbose_handler, NULL},   ""},
-	{"--verbose",		1,	{set_verbose_handler, NULL},   "Debug level: 0 - 5"},
+	{"-z",               0, {forced_update_fake_addr, NULL}, ""},
+	{"--fake-address", 0, {forced_update_fake_addr, NULL},
+	 "On SIGUSR1, fake address using random 203.0.113.0/24 before real update."},
 
-	{"-v",			0,	{print_version_handler, NULL}, ""},
-	{"--version",		0,	{print_version_handler, NULL}, "Show inadyn version"},
+	{"-h", 0, {help_handler, NULL}, ""},
+	{"--help", 0, {help_handler, NULL}, "This online help."},
 
-	{NULL,			0,	{0, NULL},	NULL }
+	{"-V", 1, {set_verbose_handler, NULL}, ""},
+	{"--verbose", 1, {set_verbose_handler, NULL}, "Debug level: 0 - 5"},
+
+	{"-v", 0, {print_version_handler, NULL}, ""},
+	{"--version", 0, {print_version_handler, NULL}, "Show inadyn version"},
+
+	{NULL, 0, {0, NULL}, NULL}
 };
 
-
-void print_help_page(void)
+static void print_help_page(void)
 {
-	CMD_DESCRIPTION_TYPE *it;
+	cmd_desc_t *it;
 
 	puts("Inadyn is a dynamic DNS (DDNS) client.  It does periodic and/or on-demand checks\n"
 	     "of your externally visible IP address and updates the hostname to IP mapping at\n"
 	     "your DDNS service provider when necessary.\n");
-	puts("dyndns.org:\n"
-	     "\tinadyn -u username -p password -a my.registrated.name\n");
+	puts("dyndns.org:\n" "\tinadyn -u username -p password -a my.registered.name\n");
 
 	it = cmd_options_table;
-	while (it->p_option != NULL)
-	{
-		if (it->p_description)
-		{
-			if (strlen(it->p_option) == 2)
-				printf("  %s, ", it->p_option);
+	while (it->option != NULL) {
+		if (it->description) {
+			if (strlen(it->option) == 2)
+				printf("  %s, ", it->option);
 			else
-				printf("%-16s  %s\n", it->p_option, it->p_description);
+				printf("%-16s  %s\n", it->option, it->description);
 		}
 		++it;
 	}
+
+	puts("==============================================================================");
+	puts("SIGINT/TERM: Stops inadyn");
+	puts("SIGUP      : Reload inadyn.conf");
+	puts("SIGUSR1    : Force update, works with the optional --fake-address");
+	puts("SIGUSR2    : Abort any wait and check now");
 }
 
-static RC_TYPE help_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int help_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	(void)p_cmd;
-	(void)current_nr;
+	(void)cmd;
+	(void)num;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->abort = TRUE;
+	ctx->abort = 1;
 	print_help_page();
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE test_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int startup_delay_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	(void)p_cmd;
-	(void)current_nr;
-
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->test_update = TRUE;
-	p_self->total_iterations = 1;
-	p_self->dbg.level = 5;
-
-	return RC_OK;
-}
-
-static RC_TYPE get_wildcard_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
-{
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
-
-	(void)p_cmd;
-	(void)current_nr;
-
-	if (p_self == NULL)
-		return RC_INVALID_POINTER;
-
-	p_self->info[curr_info].wildcard = TRUE;
-
-	return RC_OK;
-}
-
-static RC_TYPE set_verbose_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
-{
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
-
-	if (p_self == NULL)
-		return RC_INVALID_POINTER;
-
-	if (sscanf(p_cmd->argv[current_nr], "%d", &p_self->dbg.level) != 1)
+	if (sscanf(cmd->argv[num], "%d", &ctx->startup_delay_sec) != 1)
 		return RC_DYNDNS_INVALID_OPTION;
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE set_iterations_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int update_once_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	(void)cmd;
+	(void)num;
+
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sscanf(p_cmd->argv[current_nr], "%d", &p_self->total_iterations) != 1)
+	ctx->update_once = 1;
+	ctx->total_iterations = 1;
+	ctx->dbg.level = 5;
+
+	return 0;
+}
+
+static int get_wildcard_handler(cmd_data_t *cmd, int num, void *context)
+{
+	ddns_t *ctx = (ddns_t *)context;
+
+	(void)cmd;
+	(void)num;
+
+	if (ctx == NULL)
+		return RC_INVALID_POINTER;
+
+	ctx->info[curr_info].wildcard = 1;
+
+	return 0;
+}
+
+static int set_verbose_handler(cmd_data_t *cmd, int num, void *context)
+{
+	ddns_t *ctx = (ddns_t *)context;
+
+	if (ctx == NULL)
+		return RC_INVALID_POINTER;
+
+	if (sscanf(cmd->argv[num], "%d", &ctx->dbg.level) != 1)
 		return RC_DYNDNS_INVALID_OPTION;
 
-	p_self->total_iterations = (p_self->sleep_sec < 0) 
-		? DYNDNS_DEFAULT_ITERATIONS
-		: p_self->total_iterations;
-
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE set_silent_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int set_iterations_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	(void)p_cmd;
-	(void)current_nr;
-
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->run_in_background = TRUE;
+	if (sscanf(cmd->argv[num], "%d", &ctx->total_iterations) != 1)
+		return RC_DYNDNS_INVALID_OPTION;
 
-	return RC_OK;
+	ctx->total_iterations = (ctx->sleep_sec < 0)
+	    ? DYNDNS_DEFAULT_ITERATIONS : ctx->total_iterations;
+
+	return 0;
 }
 
-static RC_TYPE get_logfile_name(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int set_silent_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	(void)cmd;
+	(void)num;
+
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sizeof(p_self->dbg.p_logfilename) < strlen(p_cmd->argv[current_nr]))
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	ctx->run_in_background = 1;
 
-	strcpy(p_self->dbg.p_logfilename, p_cmd->argv[current_nr]);
-
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE get_username_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_logfile_name(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sizeof(p_self->info[curr_info].credentials.my_username) < strlen(p_cmd->argv[current_nr]))
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	if (sizeof(ctx->dbg.p_logfilename) < strlen(cmd->argv[num]))
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(p_self->info[curr_info].credentials.my_username, p_cmd->argv[current_nr]);
+	strcpy(ctx->dbg.p_logfilename, cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE get_password_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_username_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sizeof(p_self->info[curr_info].credentials.my_password) < strlen(p_cmd->argv[current_nr]))
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	if (sizeof(ctx->info[curr_info].creds.username) < strlen(cmd->argv[num]))
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(p_self->info[curr_info].credentials.my_password, (p_cmd->argv[current_nr]));
+	strcpy(ctx->info[curr_info].creds.username, cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE get_alias_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_password_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (p_self->info[curr_info].alias_count >= DYNDNS_MAX_ALIAS_NUMBER)
+	if (sizeof(ctx->info[curr_info].creds.password) < strlen(cmd->argv[num]))
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
+
+	strcpy(ctx->info[curr_info].creds.password, (cmd->argv[num]));
+
+	return 0;
+}
+
+static int get_alias_handler(cmd_data_t *cmd, int num, void *context)
+{
+	ddns_t *ctx = (ddns_t *)context;
+
+	if (ctx == NULL)
+		return RC_INVALID_POINTER;
+
+	if (ctx->info[curr_info].alias_count >= DYNDNS_MAX_ALIAS_NUMBER)
 		return RC_DYNDNS_TOO_MANY_ALIASES;
 
-	if (sizeof(p_self->info[curr_info].alias_info[p_self->info[curr_info].alias_count].names) < strlen(p_cmd->argv[current_nr]))
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	if (sizeof(ctx->info[curr_info].alias[ctx->info[curr_info].alias_count].names) < strlen(cmd->argv[num]))
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(p_self->info[curr_info].alias_info[p_self->info[curr_info].alias_count].names.name, (p_cmd->argv[current_nr]));
-	p_self->info[curr_info].alias_count++;
+	strcpy(ctx->info[curr_info].alias[ctx->info[curr_info].alias_count].names.name, (cmd->argv[num]));
+	ctx->info[curr_info].alias_count++;
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE get_name_and_port(char *p_src, char *p_dest_name, int *p_dest_port)
+static int get_name_and_port(char *p_src, char *p_dest_name, int *p_dest_port)
 {
-	const char *p_port = strstr(p_src,":");
+	const char *p_port = strstr(p_src, ":");
 
-	if (p_port)
-	{
+	if (p_port) {
 		int port_nr, len;
-		int port_ok = sscanf(p_port + 1, "%d",&port_nr);
+		int port_ok = sscanf(p_port + 1, "%d", &port_nr);
 
 		if (port_ok != 1)
 			return RC_DYNDNS_INVALID_OPTION;
@@ -402,180 +434,207 @@ static RC_TYPE get_name_and_port(char *p_src, char *p_dest_name, int *p_dest_por
 		len = p_port - p_src;
 		memcpy(p_dest_name, p_src, len);
 		p_dest_name[len] = 0;
-	}
-	else
-	{
+	} else {
 		strcpy(p_dest_name, p_src);
 	}
 
-	return RC_OK;
+	return 0;
 }
 
-/** Returns the svr name and port if the format is :
- * name[:port] url.
+/**
+ * get_ip_server_name_handler - Returns the server name and port
+ *
+ * If the format is 'name[:port] url' this function returns the name and
+ * port of the server.
  */
-static RC_TYPE get_ip_server_name_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_ip_server_name_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
-	RC_TYPE rc;
+	ddns_t *ctx = (ddns_t *)context;
+	int rc;
 	int port = -1;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	/*ip_server_name*/
-	if (sizeof(p_self->info[curr_info].ip_server_name) < strlen(p_cmd->argv[current_nr]) + 1)
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	/*ip_server_name */
+	if (sizeof(ctx->info[curr_info].ip_server_name) < strlen(cmd->argv[num]) + 1)
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	p_self->info[curr_info].ip_server_name.port = HTTP_DEFAULT_PORT;
-	rc = get_name_and_port(p_cmd->argv[current_nr], p_self->info[curr_info].ip_server_name.name, &port);
-	if (rc == RC_OK && port != -1)
-		p_self->info[curr_info].ip_server_name.port = port;
+	ctx->info[curr_info].ip_server_name.port = HTTP_DEFAULT_PORT;
+	rc = get_name_and_port(cmd->argv[num], ctx->info[curr_info].ip_server_name.name, &port);
+	if (rc == 0 && port != -1)
+		ctx->info[curr_info].ip_server_name.port = port;
 
-	if (sizeof(p_self->info[curr_info].ip_server_url) < strlen(p_cmd->argv[current_nr + 1]) + 1)
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	if (sizeof(ctx->info[curr_info].ip_server_url) < strlen(cmd->argv[num + 1]) + 1)
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(p_self->info[curr_info].ip_server_url, p_cmd->argv[current_nr + 1]);
+	strcpy(ctx->info[curr_info].ip_server_url, cmd->argv[num + 1]);
 
 	return rc;
 }
 
-static RC_TYPE get_dns_server_name_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_dns_server_name_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
-	RC_TYPE rc;
+	ddns_t *ctx = (ddns_t *)context;
+	int rc;
 	int port = -1;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sizeof(p_self->info[curr_info].dyndns_server_name) < strlen(p_cmd->argv[current_nr]))
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	if (sizeof(ctx->info[curr_info].dyndns_server_name) < strlen(cmd->argv[num]))
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	p_self->info[curr_info].dyndns_server_name.port = HTTP_DEFAULT_PORT;
-	rc = get_name_and_port(p_cmd->argv[current_nr], p_self->info[curr_info].dyndns_server_name.name, &port);
-	if (rc == RC_OK && port != -1)
-		p_self->info[curr_info].dyndns_server_name.port = port;
+	ctx->info[curr_info].dyndns_server_name.port = HTTP_DEFAULT_PORT;
+	rc = get_name_and_port(cmd->argv[num], ctx->info[curr_info].dyndns_server_name.name, &port);
+	if (rc == 0 && port != -1)
+		ctx->info[curr_info].dyndns_server_name.port = port;
 
 	return rc;
 }
 
-RC_TYPE get_dns_server_url_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+int get_dns_server_url_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sizeof(p_self->info[curr_info].dyndns_server_url) < strlen(p_cmd->argv[current_nr]))
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	if (sizeof(ctx->info[curr_info].dyndns_server_url) < strlen(cmd->argv[num]))
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(p_self->info[curr_info].dyndns_server_url, p_cmd->argv[current_nr]);
+	strcpy(ctx->info[curr_info].dyndns_server_url, cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
 
 /* returns the proxy server nme and port
  */
-static RC_TYPE get_proxy_server_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_proxy_server_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
-	RC_TYPE rc;
+	ddns_t *ctx = (ddns_t *)context;
+	int rc;
 	int port = -1;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sizeof(p_self->info[curr_info].proxy_server_name) < strlen(p_cmd->argv[current_nr]))
-		return  RC_DYNDNS_BUFFER_TOO_SMALL;
+	if (sizeof(ctx->info[curr_info].proxy_server_name) < strlen(cmd->argv[num]))
+		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	p_self->info[curr_info].proxy_server_name.port = HTTP_DEFAULT_PORT;
-	rc = get_name_and_port(p_cmd->argv[current_nr], p_self->info[curr_info].proxy_server_name.name, &port);
-	if (rc == RC_OK && port != -1)
-		p_self->info[curr_info].proxy_server_name.port = port;
+	ctx->info[curr_info].proxy_server_name.port = HTTP_DEFAULT_PORT;
+	rc = get_name_and_port(cmd->argv[num], ctx->info[curr_info].proxy_server_name.name, &port);
+	if (rc == 0 && port != -1)
+		ctx->info[curr_info].proxy_server_name.port = port;
 
 	return rc;
 }
+
 /* Read the dyndnds name update period.
    and impose the max and min limits
 */
-static RC_TYPE get_update_period_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_update_period_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	int val;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sscanf(p_cmd->argv[current_nr], "%d", &p_self->sleep_sec) != 1)
+	if (sscanf(cmd->argv[num], "%d", &val) != 1)
 		return RC_DYNDNS_INVALID_OPTION;
 
-	p_self->sleep_sec /= 1000;
-	p_self->sleep_sec = (p_self->sleep_sec < DYNDNS_MIN_SLEEP) ?  DYNDNS_MIN_SLEEP: p_self->sleep_sec;
-	(p_self->sleep_sec > DYNDNS_MAX_SLEEP) ?  p_self->sleep_sec = DYNDNS_MAX_SLEEP: 1;
+	val /= 1000;
+	if (val < DYNDNS_MIN_SLEEP)
+		val = DYNDNS_MIN_SLEEP;
+	if (val > DYNDNS_MAX_SLEEP)
+		val = DYNDNS_MAX_SLEEP;
 
-	return RC_OK;
+	ctx->sleep_sec = val;
+
+	return 0;
 }
 
-static RC_TYPE get_update_period_sec_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_update_period_sec_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	int val = DYNDNS_DEFAULT_SLEEP;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sscanf(p_cmd->argv[current_nr], "%d", &p_self->normal_update_period_sec) != 1)
+	if (sscanf(cmd->argv[num], "%d", &val) != 1)
 		return RC_DYNDNS_INVALID_OPTION;
 
-	p_self->normal_update_period_sec = (p_self->normal_update_period_sec < DYNDNS_MIN_SLEEP) ?  DYNDNS_MIN_SLEEP: p_self->normal_update_period_sec;
-	(p_self->normal_update_period_sec > DYNDNS_MAX_SLEEP) ?  p_self->normal_update_period_sec = DYNDNS_MAX_SLEEP: 1;
+	if (val < DYNDNS_MIN_SLEEP)
+		val = DYNDNS_MIN_SLEEP;
+	if (val > DYNDNS_MAX_SLEEP)
+		val = DYNDNS_MAX_SLEEP;
 
-	return RC_OK;
+	ctx->normal_update_period_sec = val;
+
+	return 0;
 }
 
-static RC_TYPE get_forced_update_period_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_forced_update_period_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	if (sscanf(p_cmd->argv[current_nr], "%d", &p_self->forced_update_period_sec) != 1)
+	if (sscanf(cmd->argv[num], "%d", &ctx->forced_update_period_sec) != 1)
 		return RC_DYNDNS_INVALID_OPTION;
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE set_syslog_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int forced_update_fake_addr(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	(void)p_cmd;
-	(void)current_nr;
+	(void)cmd;
+	(void)num;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->debug_to_syslog = TRUE;
+	ctx->forced_update_fake_addr = 1;
 
-	return RC_OK;
+	return 0;
+}
+
+static int set_syslog_handler(cmd_data_t *cmd, int num, void *context)
+{
+	ddns_t *ctx = (ddns_t *)context;
+
+	(void)cmd;
+	(void)num;
+
+	if (ctx == NULL)
+		return RC_INVALID_POINTER;
+
+	ctx->debug_to_syslog = 1;
+
+	return 0;
 }
 
 /**
  * Reads the params for change persona. Format:
  * <uid[:gid]>
  */
-static RC_TYPE set_change_persona_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int set_change_persona_handler(cmd_data_t *cmd, int num, void *context)
 {
-	int s, result = RC_OK;
+	int s, result = 0;
 	char *arg, *buf, *p_gid;
 	ssize_t bufsize;
 	gid_t gid;
 	uid_t uid;
 	struct passwd pwd, *pwd_res;
 	long login_len_max;
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
 	/* Determine max length of a username */
@@ -583,182 +642,169 @@ static RC_TYPE set_change_persona_handler(CMD_DATA *p_cmd, int current_nr, void 
 	if (login_len_max <= 0)
 		login_len_max = 32;
 
-	arg = p_cmd->argv[current_nr];
+	arg = cmd->argv[num];
 	{
-		char groupname[33] = ""; /* MAX 32 chars + '\0', groupadd(8) */
-		char username[login_len_max+1];
-		char fmt[65]; /* Conversion string for username */
+		char groupname[33] = "";	/* MAX 32 chars + '\0', groupadd(8) */
+		char username[login_len_max + 1];
+		char fmt[65];	/* Conversion string for username */
 
 		uid = getuid();
 		gid = getgid();
 
 		p_gid = strstr(arg, ":");
-		if (p_gid)
-		{
-			if ((strlen(p_gid + 1) > 0) &&  /* if something is present after : */
-			    sscanf(p_gid + 1, "%32[a-zA-Z-]", groupname) != 1)
+		if (p_gid) {
+			if ((strlen(p_gid + 1) > 0) &&	/* if something is present after : */
+			    sscanf(p_gid + 1, "%32[a-zA-Z_-]", groupname) != 1)
 				return RC_DYNDNS_INVALID_OPTION;
 		}
 
-		snprintf(fmt, sizeof(fmt), "%%%ld[a-zA-Z-]", login_len_max);
+		snprintf(fmt, sizeof(fmt), "%%%ld[a-zA-Z_-]", login_len_max);
 		if (sscanf(arg, fmt, username) != 1)
 			return RC_DYNDNS_INVALID_OPTION;
 
 		/* Get uid and gid by their names */
-		if (strlen(groupname) > 0)
-		{
+		if (strlen(groupname) > 0) {
 			struct group grp;
 			struct group *grp_res;
 
 			bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
 			if (bufsize == -1)
-				bufsize = 16384;        /* Should be more than enough */
+				bufsize = 16384;	/* Should be more than enough */
 
 			buf = malloc(bufsize);
 			if (buf == NULL)
 				return RC_OUT_OF_MEMORY;
 
 			s = getgrnam_r(groupname, &grp, buf, bufsize, &grp_res);
-			if (grp_res != NULL)
-			{
+			if (grp_res != NULL) {
 				gid = grp.gr_gid;
-			}
-			else
-			{
-				if (s == 0)
-				{
-					logit(LOG_ERR, MODULE_TAG "Cannot find GROUP %s", groupname);
+			} else {
+				if (s == 0) {
+					logit(LOG_ERR, "Cannot find GROUP %s", groupname);
 					result = RC_OS_INVALID_GID;
-				}
-				else
-				{
+				} else {
 					result = RC_ERROR;
 				}
 			}
 			free(buf);
 
-			if (RC_OK != result)
+			if (0 != result)
 				return result;
 		}
 
 		bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (bufsize == -1)          /* Value was indeterminate */
-			bufsize = 16384;    /* Should be more than enough */
+		if (bufsize == -1)	/* Value was indeterminate */
+			bufsize = 16384;	/* Should be more than enough */
 
 		buf = malloc(bufsize);
 		if (buf == NULL)
 			return RC_OUT_OF_MEMORY;
 
 		s = getpwnam_r(username, &pwd, buf, bufsize, &pwd_res);
-		if (pwd_res != NULL)
-		{
+		if (pwd_res != NULL) {
 			uid = pwd.pw_uid;
 			if (gid == getgid())
 				gid = pwd.pw_gid;
-		}
-		else
-		{
-			if (s == 0)
-			{
-				logit(LOG_ERR, MODULE_TAG "Cannot find USER %s", username);
+		} else {
+			if (s == 0) {
+				logit(LOG_ERR, "Cannot find USER %s", username);
 				result = RC_OS_INVALID_UID;
-			}
-			else
-			{
+			} else {
 				result = RC_ERROR;
 			}
 		}
 		free(buf);
 
-		if (RC_OK != result)
+		if (0 != result)
 			return result;
 
-		p_self->change_persona = TRUE;
-		p_self->sys_usr_info.gid = gid;
-		p_self->sys_usr_info.uid = uid;
+		ctx->change_persona = 1;
+		ctx->sys_usr_info.gid = gid;
+		ctx->sys_usr_info.uid = uid;
 	}
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE set_bind_interface(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int set_bind_interface(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->bind_interface = strdup(p_cmd->argv[current_nr]);
+	ctx->bind_interface = strdup(cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE set_check_interface(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int set_check_interface(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->check_interface = strdup(p_cmd->argv[current_nr]);
+	ctx->check_interface = strdup(cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE set_pidfile(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int set_pidfile(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->pidfile = strdup(p_cmd->argv[current_nr]);
+	ctx->pidfile = strdup(cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE set_cachefile(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int set_cachefile(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->cache_file = strdup(p_cmd->argv[current_nr]);
+	ctx->cache_file = strdup(cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
 
-RC_TYPE print_version_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+int print_version_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	(void)p_cmd;
-	(void)current_nr;
+	(void)cmd;
+	(void)num;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
 	printf("%s\n", DYNDNS_VERSION_STRING);
-	p_self->abort = TRUE;
+	ctx->abort = 1;
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE get_exec_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_exec_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
+	ddns_t *ctx = (ddns_t *)context;
 
-	(void)p_cmd;
-	(void)current_nr;
+	(void)cmd;
+	(void)num;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	p_self->external_command = strdup(p_cmd->argv[current_nr]);
+	ctx->external_command = strdup(cmd->argv[num]);
 
-	return RC_OK;
+	return 0;
 }
+
 
 /**
    Searches the DYNDNS system by the argument.
@@ -767,85 +813,61 @@ static RC_TYPE get_exec_handler(CMD_DATA *p_cmd, int current_nr, void *p_context
    server name = dyndns.org | freedns.afraid.org
    The result is a pointer in the table of DNS systems.
 */
-static RC_TYPE get_dyndns_system_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_dyndns_system_handler(cmd_data_t *cmd, int num, void *context)
 {
-	DYNDNS_SYSTEM *p_dns_system = NULL;
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *)p_context;
-	DYNDNS_SYSTEM_INFO *it;
+	ddns_system_t *system = NULL;
+	ddns_t *ctx = (ddns_t *)context;
+	ddns_sysinfo_t *it;
 
-	if (p_self == NULL)
+	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
-	it = get_dyndns_system_table();
-	for (; it != NULL && it->id != LAST_DNS_SYSTEM; ++it)
-	{
-		if (strcmp(it->system.p_key, p_cmd->argv[current_nr]) == 0)
-		{
-			p_dns_system = &it->system;
+	it = ddns_system_table();
+	for (; it != NULL && it->id != LAST_DNS_SYSTEM; ++it) {
+		if (strcmp(it->system.key, cmd->argv[num]) == 0) {
+			system = &it->system;
 			break;
 		}
 	}
 
-	if (p_dns_system == NULL)
-	{
-		logit(LOG_ERR, MODULE_TAG "Cannot find DDNS provider %s, check your spelling.", p_cmd->argv[current_nr]);
+	if (system == NULL) {
+		logit(LOG_ERR, "Cannot find DDNS provider %s, check your spelling.", cmd->argv[num]);
 		return RC_CMD_PARSER_INVALID_OPTION_ARGUMENT;
 	}
 
-	for (curr_info = 0; curr_info < p_self->info_count &&
-		     curr_info < DYNDNS_MAX_SERVER_NUMBER &&
-		     p_self->info[curr_info].p_dns_system != p_dns_system; curr_info++)
-		;
+	for (curr_info = 0; curr_info < ctx->info_count &&
+	     curr_info < DYNDNS_MAX_SERVER_NUMBER && ctx->info[curr_info].system != system; curr_info++) ;
 
-	if (curr_info >= p_self->info_count)
-	{
-		if (curr_info < DYNDNS_MAX_SERVER_NUMBER)
-		{
-			p_self->info_count++;
-			p_self->info[curr_info].p_dns_system = p_dns_system;
-		}
-	   	else
-		{
+	if (curr_info >= ctx->info_count) {
+		if (curr_info < DYNDNS_MAX_SERVER_NUMBER) {
+			ctx->info_count++;
+			ctx->info[curr_info].system = system;
+		} else {
 			return RC_DYNDNS_BUFFER_TOO_SMALL;
 		}
 	}
 
-	return RC_OK;
+	return 0;
 }
 
-static RC_TYPE push_in_buffer(char* p_src, int src_len, char *p_buffer, int* p_act_len, int max_len)
+static int push_in_buffer(char *p_src, int src_len, char *p_buffer, int *p_act_len, int max_len)
 {
 	if (*p_act_len + src_len > max_len)
 		return RC_FILE_IO_OUT_OF_BUFFER;
 
-	memcpy(p_buffer + *p_act_len,p_src, src_len);
+	memcpy(p_buffer + *p_act_len, p_src, src_len);
 	*p_act_len += src_len;
 
-	return RC_OK;
+	return 0;
 }
 
-typedef enum
+static int parser_init(cfg_parser_t *cfg, FILE * fp)
 {
-	NEW_LINE,
-	COMMENT,
-	DATA,
-	SPACE,
-	ESCAPE
-} PARSER_STATE;
+	memset(cfg, 0, sizeof(*cfg));
+	cfg->state = NEW_LINE;
+	cfg->fp = fp;
 
-typedef struct
-{
-	FILE *p_file;
-	PARSER_STATE state;
-} OPTION_FILE_PARSER;
-
-static RC_TYPE parser_init(OPTION_FILE_PARSER *p_cfg, FILE *p_file)
-{
-	memset(p_cfg, 0, sizeof(*p_cfg));
-	p_cfg->state = NEW_LINE;
-	p_cfg->p_file = p_file;
-
-	return RC_OK;
+	return 0;
 }
 
 /** Read one single option from file into the given buffer.
@@ -864,21 +886,19 @@ static RC_TYPE parser_init(OPTION_FILE_PARSER *p_cfg, FILE *p_file)
     * COMMENT - everything beginning with # until EOLine
     * ESCAPE - everything that is otherwise (incl. spaces). Next char is raw copied.
     */
-static RC_TYPE parser_read_option(OPTION_FILE_PARSER *p_cfg, char *p_buffer, int maxlen)
+static int parser_read_option(cfg_parser_t *cfg, char *p_buffer, int maxlen)
 {
-	RC_TYPE rc = RC_OK;
-	BOOL parse_end = FALSE;
+	int rc = 0;
+	int parse_end = 0;
 	int count = 0;
 	*p_buffer = 0;
 
-	while (!parse_end)
-	{
+	while (!parse_end) {
 		char ch;
 		{
 			int n;
-			if ((n = fscanf(p_cfg->p_file, "%c", &ch)) < 0)
-			{
-				if (feof(p_cfg->p_file))
+			if ((n = fscanf(cfg->fp, "%c", &ch)) < 0) {
+				if (feof(cfg->fp))
 					break;
 
 				rc = RC_FILE_IO_READ_ERROR;
@@ -887,122 +907,108 @@ static RC_TYPE parser_read_option(OPTION_FILE_PARSER *p_cfg, char *p_buffer, int
 			}
 		}
 
-		switch (p_cfg->state)
-		{
-			case NEW_LINE:
-				if (ch == '\\')
-				{
-					p_cfg->state = ESCAPE;
-					break;
-				}
+		switch (cfg->state) {
+		case NEW_LINE:
+			if (ch == '\\') {
+				cfg->state = ESCAPE;
+				break;
+			}
 
-				if (ch == '#') /*comment*/
-				{
-					p_cfg->state = COMMENT;
-					break;
-				}
+			if (ch == '#') {	/*comment */
+				cfg->state = COMMENT;
+				break;
+			}
 
-				if (!isspace(ch))
-				{
-					if (ch != '-')/*add '--' to first word in line*/
-					{
-						if ((rc = push_in_buffer("--", 2, p_buffer, &count, maxlen)) != RC_OK)
-							break;
-					}
-
-					if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != RC_OK)
+			if (!isspace(ch)) {
+				if (ch != '-') {	/*add '--' to first word in line */
+					if ((rc = push_in_buffer("--", 2, p_buffer, &count, maxlen)) != 0)
 						break;
-
-					p_cfg->state = DATA;
-					break;
 				}
-				/*skip actual leading  spaces*/
+
+				if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != 0)
+					break;
+
+				cfg->state = DATA;
+				break;
+			}
+			/*skip actual leading  spaces */
+			break;
+
+		case SPACE:
+			if (ch == '\\') {
+				cfg->state = ESCAPE;
+				break;
+			}
+
+			if (ch == '#') {	/*comment */
+				cfg->state = COMMENT;
+				break;
+			}
+
+			if (ch == '\n' || ch == '\r') {
+				cfg->state = NEW_LINE;
+				break;
+			}
+
+			if (!isspace(ch)) {
+				if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != 0)
+					break;
+
+				cfg->state = DATA;
+				break;
+			}
+			break;
+
+		case COMMENT:	/*skip comments */
+			if (ch == '\n' || ch == '\r')
+				cfg->state = NEW_LINE;
+			break;
+
+		case DATA:
+			if (ch == '\\') {
+				cfg->state = ESCAPE;
+				break;
+			}
+
+			if (ch == '#') {
+				cfg->state = COMMENT;
+				break;
+			}
+
+			if (ch == '\n' || ch == '\r') {
+				cfg->state = NEW_LINE;
+				parse_end = 1;
+				break;
+			}
+
+			if (isspace(ch)) {
+				cfg->state = SPACE;
+				parse_end = 1;
+				break;
+			}
+
+			/*actual data */
+			if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != 0)
+				break;
+			break;
+
+		case ESCAPE:
+			if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != 0)
 				break;
 
-			case SPACE:
-				if (ch == '\\')
-				{
-					p_cfg->state = ESCAPE;
-					break;
-				}
+			cfg->state = DATA;
+			break;
 
-				if (ch == '#') /*comment*/
-				{
-					p_cfg->state = COMMENT;
-					break;
-				}
-
-				if (ch == '\n' || ch == '\r')
-				{
-					p_cfg->state = NEW_LINE;
-					break;
-				}
-
-				if (!isspace(ch))
-				{
-					if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != RC_OK)
-						break;
-
-					p_cfg->state = DATA;
-					break;
-				}
-				break;
-
-			case COMMENT: /*skip comments*/
-				if (ch == '\n' || ch == '\r')
-					p_cfg->state = NEW_LINE;
-				break;
-
-			case DATA:
-				if (ch == '\\')
-				{
-					p_cfg->state = ESCAPE;
-					break;
-				}
-
-				if (ch == '#')
-				{
-					p_cfg->state = COMMENT;
-					break;
-				}
-
-				if (ch == '\n' || ch == '\r')
-				{
-					p_cfg->state = NEW_LINE;
-					parse_end = TRUE;
-					break;
-				}
-
-				if (isspace(ch))
-				{
-					p_cfg->state = SPACE;
-					parse_end = TRUE;
-					break;
-				}
-
-				/*actual data*/
-				if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != RC_OK)
-					break;
-				break;
-
-			case ESCAPE:
-				if ((rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen)) != RC_OK)
-					break;
-
-				p_cfg->state = DATA;
-				break;
-
-			default:
-				rc = RC_CMD_PARSER_INVALID_OPTION;
-				break;
+		default:
+			rc = RC_CMD_PARSER_INVALID_OPTION;
+			break;
 		}
 
-		if (rc != RC_OK)
+		if (rc != 0)
 			break;
 	}
 
-	if (rc == RC_OK)
-	{
+	if (rc == 0) {
 		char ch = 0;
 		rc = push_in_buffer(&ch, 1, p_buffer, &count, maxlen);
 	}
@@ -1010,125 +1016,189 @@ static RC_TYPE parser_read_option(OPTION_FILE_PARSER *p_cfg, char *p_buffer, int
 	return rc;
 }
 
-
 /**
    This handler reads the data in the passed file name.
    Then appends the words in the table (cutting all spaces) to the existing cmd line options.
-   It adds to the CMD_DATA struct.
+   It adds to the cmd_data_t struct.
    Actions:
    - open file
    - read characters and cut spaces away
-   - add values one by one to the existing p_cmd data
+   - add values one by one to the existing cmd data
 */
-static RC_TYPE get_options_from_file_handler(CMD_DATA *p_cmd, int current_nr, void *p_context)
+static int get_options_from_file_handler(cmd_data_t *cmd, int num, void *context)
 {
-	RC_TYPE rc = RC_OK;
-	DYN_DNS_CLIENT *p_self = (DYN_DNS_CLIENT *) p_context;
-	FILE *p_file = NULL;
-	char *p_tmp_buffer = NULL;
-	const int buffer_size = DYNDNS_SERVER_NAME_LENGTH;
-	OPTION_FILE_PARSER parser;
+	int rc = 0;
+	FILE *fp = NULL;
+	char *buf = NULL;
+	const size_t buflen = DYNDNS_SERVER_NAME_LEN;
+	ddns_t *ctx = (ddns_t *)context;
+	cfg_parser_t parser;
 
-	if (!p_self || !p_cmd)
+	if (!ctx || !cmd)
 		return RC_INVALID_POINTER;
 
-	do
-	{
- 		p_tmp_buffer = malloc(buffer_size);
-   		if (!p_tmp_buffer)
-	 	{
-	 		rc = RC_OUT_OF_MEMORY;
-	 		break;
-	  	}
+	do {
+		buf = malloc(buflen);
+		if (!buf) {
+			rc = RC_OUT_OF_MEMORY;
+			break;
+		}
 
-	  	p_file = fopen(p_cmd->argv[current_nr], "r");
-	  	if (!p_file)
-	  	{
-			logit(LOG_ERR, MODULE_TAG "Cannot open config file %s: %s", p_cmd->argv[current_nr], strerror(errno));
-	  		rc = RC_FILE_IO_OPEN_ERROR;
-	  		break;
-	  	}
+		fp = fopen(cmd->argv[num], "r");
+		if (!fp) {
+			logit(LOG_ERR, "Cannot open config file %s: %s", cmd->argv[num], strerror(errno));
+			rc = RC_FILE_IO_OPEN_ERROR;
+			break;
+		}
 
 		/* Save for later... */
-		if (p_self->cfgfile)
-			free(p_self->cfgfile);
-		p_self->cfgfile = strdup(p_cmd->argv[current_nr]);
+		if (ctx->cfgfile)
+			free(ctx->cfgfile);
+		ctx->cfgfile = strdup(cmd->argv[num]);
 
-		if ((rc = parser_init(&parser, p_file)) != RC_OK)
+		if ((rc = parser_init(&parser, fp)) != 0)
 			break;
 
-		while (!feof(p_file))
-		{
-			rc = parser_read_option(&parser,p_tmp_buffer, buffer_size);
-			if (rc != RC_OK)
+		while (!feof(fp)) {
+			rc = parser_read_option(&parser, buf, buflen);
+			if (rc != 0)
 				break;
 
-			if (!strlen(p_tmp_buffer))
+			if (!strlen(buf))
 				break;
 
-			rc = cmd_add_val(p_cmd, p_tmp_buffer);
-			if (rc != RC_OK)
+			rc = cmd_add_val(cmd, buf);
+			if (rc != 0)
 				break;
-   		}
+		}
 	}
 	while (0);
 
-	if (p_file)
-		fclose(p_file);
+	if (fp)
+		fclose(fp);
 
-	if (p_tmp_buffer)
-		free(p_tmp_buffer);
+	if (buf)
+		free(buf);
 
 	return rc;
 }
 
 static void check_setting(int cond, int no, char *msg, int *ok)
 {
-	if (!cond)
-	{
-		logit(LOG_WARNING, MODULE_TAG "%s in account %d", msg, no + 1);
+	if (!cond) {
+		logit(LOG_WARNING, "%s in account %d", msg, no + 1);
 		*ok = 0;
 	}
 }
 
 /* Returns POSIX OK(0) on success, non-zero on validation failure. */
-static int validate_configuration(DYN_DNS_CLIENT *p_self)
+static int validate_configuration(ddns_t *ctx)
 {
 	int i, num = 0;
 
-	if (!p_self->info_count)
-	{
-		logit(LOG_ERR, MODULE_TAG "No DDNS provider setup in configuration.");
+	if (!ctx->info_count) {
+		logit(LOG_ERR, "No DDNS provider setup in configuration.");
 		return 1;
 	}
 
-	for (i = 0; i < p_self->info_count; i++)
-	{
+	for (i = 0; i < ctx->info_count; i++) {
 		int ok = 1;
-		DYNDNS_INFO_TYPE *account = &p_self->info[i];
+		ddns_info_t *account = &ctx->info[i];
 
-		check_setting(strlen(account->credentials.my_username), i, "Missing username", &ok);
-		check_setting(strlen(account->credentials.my_password), i, "Missing password", &ok);
+		check_setting(strlen(account->creds.username), i, "Missing username", &ok);
+		check_setting(strlen(account->creds.password), i, "Missing password", &ok);
 		check_setting(account->alias_count, i, "Missing your alias/hostname", &ok);
-		check_setting(strlen(account->dyndns_server_name.name), i, "Missing DDNS server address, check DDNS provider", &ok);
-		check_setting(strlen(account->ip_server_name.name), i, "Missing check IP address, check DDNS provider", &ok);
+		check_setting(strlen(account->dyndns_server_name.name), i,
+			      "Missing DDNS server address, check DDNS provider", &ok);
+		check_setting(strlen(account->ip_server_name.name), i,
+			      "Missing check IP address, check DDNS provider", &ok);
 
 		if (ok)
 			num++;
 	}
 
-	if (!num)
-	{
-		logit(LOG_ERR, MODULE_TAG "No valid DDNS setup exists.");
+	if (!num) {
+		logit(LOG_ERR, "No valid DDNS setup exists.");
 		return 1;
 	}
 
-	if (num != p_self->info_count)
-		logit(LOG_WARNING, MODULE_TAG "Not all account setups are valid, please check configuration.");
+	if (num != ctx->info_count)
+		logit(LOG_WARNING, "Not all account setups are valid, please check configuration.");
 
 	return 0;
 }
 
+
+static ddns_system_t *get_dns_system_by_id(int id)
+{
+	ddns_sysinfo_t *it;
+
+	it = ddns_system_table();
+	for (; it->id != LAST_DNS_SYSTEM; ++it) {
+		if (it->id == id)
+			return &it->system;
+	}
+
+	return NULL;
+}
+
+static int default_config(ddns_t *ctx)
+{
+	int i;
+
+	ctx->info[0].system = get_dns_system_by_id(DYNDNS_DEFAULT_DNS_SYSTEM);
+	if (ctx->info[0].system == NULL)
+		return RC_DYNDNS_INVALID_DNS_SYSTEM_DEFAULT;
+
+	/* forced update period */
+	ctx->forced_update_period_sec = DYNDNS_FORCED_UPDATE_PERIOD;
+
+	/* non-fatal error update period */
+	ctx->error_update_period_sec = DYNDNS_ERROR_UPDATE_PERIOD;
+
+	/* normal update period */
+	ctx->normal_update_period_sec = DYNDNS_DEFAULT_SLEEP;
+	ctx->sleep_sec = DYNDNS_DEFAULT_SLEEP;
+
+	/* Domain wildcarding disabled by default */
+	for (i = 0; i < DYNDNS_MAX_SERVER_NUMBER; i++)
+		ctx->info[i].wildcard = 0;
+
+	/* pidfile */
+	ctx->pidfile = strdup(DYNDNS_DEFAULT_PIDFILE);
+
+	/* Default cache_file is setup in get_config_data() */
+
+	return 0;
+}
+
+static int create_cache_file(ddns_t *ctx)
+{
+	int len, bytes;
+
+	if (!ctx->bind_interface) {
+		ctx->cache_file = strdup(DYNDNS_DEFAULT_CACHE_FILE);
+		if (!ctx->cache_file)
+			return RC_OUT_OF_MEMORY;
+
+		return 0;
+	}
+
+	/* The '-2' adjusts for the '%s' format specifier */
+	len = strlen(DYNDNS_CACHE_FILE) - 2 + strlen(ctx->bind_interface);
+	ctx->cache_file = malloc(len + 1);
+	if (!ctx->cache_file)
+		return RC_OUT_OF_MEMORY;
+
+	bytes = snprintf(ctx->cache_file, len + 1, DYNDNS_CACHE_FILE, ctx->bind_interface);
+	if (bytes != len) {
+		free(ctx->cache_file);
+		ctx->cache_file = NULL;
+		return RC_ERROR;
+	}
+
+	return 0;
+}
 
 /*
   Set up all details:
@@ -1145,121 +1215,93 @@ static int validate_configuration(DYN_DNS_CLIENT *p_self)
   - if no argument is specified tries to call the cmd line parser
   with the default cfg file path.
 */
-RC_TYPE get_config_data(DYN_DNS_CLIENT *p_self, int argc, char** argv)
+int get_config_data(ddns_t *ctx, int argc, char *argv[])
 {
 	int i;
-	RC_TYPE rc = RC_OK;
-	int cache_file_len;
-	CMD_DESCRIPTION_TYPE *it;
+	int rc = 0;
+	cmd_desc_t *it;
 
-	do
-	{
-		/*load default data */
-		rc = get_default_config_data(p_self);
-		if (rc != RC_OK)
+	do {
+		rc = default_config(ctx);
+		if (rc != 0)
 			break;
 
-		/*set up the context pointers */
 		it = cmd_options_table;
-		while (it->p_option != NULL)
-		{
-			it->p_handler.p_context = (void*) p_self;
+		while (it->option != NULL) {
+			it->handler.context = ctx;
 			++it;
 		}
 
 		/* in case of no options, assume the default cfg file may be present */
-		if (argc == 1)
-		{
-			char *custom_argv[] = {"", DYNDNS_INPUT_FILE_OPT_STRING, DYNDNS_DEFAULT_CONFIG_FILE};
-			int custom_argc = sizeof(custom_argv) / sizeof(char*);
+		if (argc == 1) {
+			char *custom_argv[] = { "", DYNDNS_INPUT_FILE_OPT_STRING,
+				DYNDNS_DEFAULT_CONFIG_FILE
+			};
+			int custom_argc = sizeof(custom_argv) / sizeof(char *);
 
-			if (p_self->dbg.level)
-				logit(LOG_NOTICE, MODULE_TAG "Using default config file %s", DYNDNS_DEFAULT_CONFIG_FILE);
+			if (ctx->dbg.level)
+				logit(LOG_NOTICE, "Using default config file %s", DYNDNS_DEFAULT_CONFIG_FILE);
 
-			if (p_self->cfgfile)
-				free(p_self->cfgfile);
-			p_self->cfgfile = strdup(DYNDNS_DEFAULT_CONFIG_FILE);
+			if (ctx->cfgfile)
+				free(ctx->cfgfile);
+			ctx->cfgfile = strdup(DYNDNS_DEFAULT_CONFIG_FILE);
 			rc = get_cmd_parse_data(custom_argv, custom_argc, cmd_options_table);
-		}
-		else
-		{
+		} else {
 			rc = get_cmd_parse_data(argv, argc, cmd_options_table);
 		}
 
-		if (rc != RC_OK || p_self->abort)
+		if (rc != 0 || ctx->abort)
 			break;
 
 		/* settings that may change due to cmd line options */
 		i = 0;
-		do
-		{
-			/*ip server*/
-			if (strlen(p_self->info[i].ip_server_name.name) == 0)
-			{
-				if (sizeof(p_self->info[i].ip_server_name.name) < strlen(p_self->info[i].p_dns_system->p_ip_server_name))
-				{
+		do {
+			/*ip server */
+			if (strlen(ctx->info[i].ip_server_name.name) == 0) {
+				if (sizeof(ctx->info[i].ip_server_name.name) <
+				    strlen(ctx->info[i].system->ip_server_name)) {
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(p_self->info[i].ip_server_name.name, p_self->info[i].p_dns_system->p_ip_server_name);
+				strcpy(ctx->info[i].ip_server_name.name, ctx->info[i].system->ip_server_name);
 
-				if (sizeof(p_self->info[i].ip_server_url) < strlen(p_self->info[i].p_dns_system->p_ip_server_url))
-				{
+				if (sizeof(ctx->info[i].ip_server_url) <
+				    strlen(ctx->info[i].system->ip_server_url)) {
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(p_self->info[i].ip_server_url, p_self->info[i].p_dns_system->p_ip_server_url);
+				strcpy(ctx->info[i].ip_server_url, ctx->info[i].system->ip_server_url);
 			}
 
-			/*dyndns server*/
-			if (strlen(p_self->info[i].dyndns_server_name.name) == 0)
-			{
-				if (sizeof(p_self->info[i].dyndns_server_name.name) < strlen(p_self->info[i].p_dns_system->p_dyndns_server_name))
-				{
+			/*dyndns server */
+			if (strlen(ctx->info[i].dyndns_server_name.name) == 0) {
+				if (sizeof(ctx->info[i].dyndns_server_name.name)
+				    < strlen(ctx->info[i].system->ddns_server_name)) {
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(p_self->info[i].dyndns_server_name.name, p_self->info[i].p_dns_system->p_dyndns_server_name);
+				strcpy(ctx->info[i].dyndns_server_name.name,
+				       ctx->info[i].system->ddns_server_name);
 
-				if (sizeof(p_self->info[i].dyndns_server_url) < strlen(p_self->info[i].p_dns_system->p_dyndns_server_url))
-				{
+				if (sizeof(ctx->info[i].dyndns_server_url) <
+				    strlen(ctx->info[i].system->ddns_server_url)) {
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(p_self->info[i].dyndns_server_url, p_self->info[i].p_dns_system->p_dyndns_server_url);
+				strcpy(ctx->info[i].dyndns_server_url, ctx->info[i].system->ddns_server_url);
 			}
 		}
-		while(++i < p_self->info_count);
+		while (++i < ctx->info_count);
 
 		/* Check if the neccessary params have been provided */
-		if (validate_configuration(p_self))
-		{
+		if (validate_configuration(ctx)) {
 			rc = RC_DYNDNS_INVALID_OR_MISSING_PARAMETERS;
 			break;
 		}
 
 		/* Setup a default cache file, unless the user provided one for us. */
-		if (p_self->bind_interface && !p_self->cache_file)
-		{
-			cache_file_len = (strlen(DYNDNS_CACHE_FILE) - 2) + strlen(p_self->bind_interface);
-			if ((p_self->cache_file = malloc(cache_file_len + 1)) == NULL)
-			{
-				rc = RC_OUT_OF_MEMORY;
-				break;
-			}
-
-			if (snprintf(p_self->cache_file, cache_file_len + 1, DYNDNS_CACHE_FILE,
-				     p_self->bind_interface) != cache_file_len)
-			{
-				rc = RC_ERROR;
-				break;
-			}
-		}
-		else
-		{
-			p_self->cache_file = strdup(DYNDNS_DEFAULT_CACHE_FILE);
-		}
-
+		if (!ctx->cache_file)
+			TRY(create_cache_file(ctx));
 	}
 	while (0);
 
@@ -1270,7 +1312,6 @@ RC_TYPE get_config_data(DYN_DNS_CLIENT *p_self, int argc, char** argv)
  * Local Variables:
  *  version-control: t
  *  indent-tabs-mode: t
- *  c-file-style: "ellemtel"
- *  c-basic-offset: 8
+ *  c-file-style: "linux"
  * End:
  */

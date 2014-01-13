@@ -17,69 +17,72 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _ERRORCODE_INCLUDED
-#define _ERRORCODE_INCLUDED
+#ifndef INADYN_ERRORCODE_H_
+#define INADYN_ERRORCODE_H_
 
-typedef enum
-{
-	RC_OK = 0,
-	RC_ERROR = 1,
-	RC_INVALID_POINTER = 2,
-	RC_OUT_OF_MEMORY = 3,
-	RC_OUT_BUFFER_OVERFLOW = 4,
+#define RC_OK                                       0
+#define RC_ERROR                                    1
+#define RC_INVALID_POINTER                          2
+#define RC_OUT_OF_MEMORY                            3
+#define RC_OUT_BUFFER_OVERFLOW                      4
 
-	RC_IP_SOCKET_CREATE_ERROR = 0x10,
-	RC_IP_BAD_PARAMETER = 0x11,
-	RC_IP_INVALID_REMOTE_ADDR = 0x12,
-	RC_IP_CONNECT_FAILED = 0x13,
-	RC_IP_SEND_ERROR = 0x14,
-	RC_IP_RECV_ERROR = 0x15,
-	RC_IP_OBJECT_NOT_INITIALIZED = 0x16,
-	RC_IP_OS_SOCKET_INIT_FAILED = 0x17,
-	RC_IP_SOCKET_BIND_ERROR = 0x18,
+#define RC_IP_SOCKET_CREATE_ERROR                   10
+#define RC_IP_BAD_PARAMETER                         11
+#define RC_IP_INVALID_REMOTE_ADDR                   12
+#define RC_IP_CONNECT_FAILED                        13
+#define RC_IP_SEND_ERROR                            14
+#define RC_IP_RECV_ERROR                            15
+#define RC_IP_OBJECT_NOT_INITIALIZED                16
+#define RC_IP_OS_SOCKET_INIT_FAILED                 17
+#define RC_IP_SOCKET_BIND_ERROR                     18
 
-	RC_TCP_OBJECT_NOT_INITIALIZED = 0x20,
+#define RC_TCP_OBJECT_NOT_INITIALIZED               20
 
-	RC_HTTP_OBJECT_NOT_INITIALIZED = 0x30,
-	RC_HTTP_BAD_PARAMETER = 0x31,
+#define RC_HTTP_OBJECT_NOT_INITIALIZED              30
+#define RC_HTTP_BAD_PARAMETER                       31
 
-	RC_DYNDNS_BUFFER_TOO_SMALL = 0x40,
-	RC_DYNDNS_INVALID_IP_ADDR_IN_HTTP_RESPONSE = 0x41,
-	RC_DYNDNS_INVALID_RSP_FROM_IP_SERVER = 0x42,
-	RC_DYNDNS_TOO_MANY_ALIASES = 0x43,
-	RC_DYNDNS_INVALID_OPTION = 0x44,
-	RC_DYNDNS_INVALID_OR_MISSING_PARAMETERS = 0x45,
-	RC_DYNDNS_UNRESOLVED_ALIAS = 0x46,
-	RC_DYNDNS_INVALID_DNS_SYSTEM_DEFAULT = 0x47,
-	RC_DYNDNS_RSP_NOTOK = 0x48,
-	RC_DYNDNS_RSP_RETRY_LATER = 0x49,
+#define RC_DYNDNS_BUFFER_TOO_SMALL                  40
+#define RC_DYNDNS_INVALID_IP_ADDR_IN_HTTP_RESPONSE  41
+#define RC_DYNDNS_INVALID_RSP_FROM_IP_SERVER        42
+#define RC_DYNDNS_TOO_MANY_ALIASES                  43
+#define RC_DYNDNS_INVALID_OPTION                    44
+#define RC_DYNDNS_INVALID_OR_MISSING_PARAMETERS     45
+#define RC_DYNDNS_UNRESOLVED_ALIAS                  46
+#define RC_DYNDNS_INVALID_DNS_SYSTEM_DEFAULT        47
+#define RC_DYNDNS_RSP_NOTOK                         48
+#define RC_DYNDNS_RSP_RETRY_LATER                   49
 
-	RC_CMD_PARSER_INVALID_OPTION = 0x50,
-	RC_CMD_PARSER_INVALID_OPTION_ARGUMENT = 0x51,
+#define RC_CMD_PARSER_INVALID_OPTION                50
+#define RC_CMD_PARSER_INVALID_OPTION_ARGUMENT       51
 
-	RC_OS_ERROR_INSTALLING_SIGNAL_HANDLER = 0x60,
-	RC_OS_INVALID_IP_ADDRESS = 0x61,
-	RC_OS_FORK_FAILURE = 0x62,
-	RC_OS_CHANGE_PERSONA_FAILURE = 0x63,
-	RC_OS_INVALID_UID = 0x64,
-	RC_OS_INVALID_GID = 0x65,
+#define RC_OS_ERROR_INSTALLING_SIGNAL_HANDLER       60
+#define RC_OS_INVALID_IP_ADDRESS                    61
+#define RC_OS_FORK_FAILURE                          62
+#define RC_OS_CHANGE_PERSONA_FAILURE                63
+#define RC_OS_INVALID_UID                           64
+#define RC_OS_INVALID_GID                           65
+#define RC_OS_INSTALL_SIGHANDLER_FAILED             66
 
-	RC_FILE_IO_OPEN_ERROR = 0x70,
-	RC_FILE_IO_READ_ERROR = 0x71,
-	RC_FILE_IO_OUT_OF_BUFFER = 0x72,
+#define RC_FILE_IO_OPEN_ERROR                       70
+#define RC_FILE_IO_READ_ERROR                       71
+#define RC_FILE_IO_OUT_OF_BUFFER                    72
+#define RC_FILE_IO_ACCESS_ERROR                     73
 
-	RC_RESTART = 0xff,
-} RC_TYPE;
+#define RC_RESTART                                  255
 
-const char* errorcode_get_name(RC_TYPE rc);
+#define DO(fn)       { int rc = fn; if (rc) return rc; }
+#define TRY(fn)      {     rc = fn; if (rc) break; }
+#define ASSERT(cond) { if (!cond) return RC_INVALID_POINTER; }
+#define UNUSED(var)  (var)__attribute__((unused))
 
-#endif /* ERRORCODE_INCLUDED */
+const char *errorcode_get_name(int rc);
+
+#endif /* INADYN_ERRORCODE_H_ */
 
 /**
  * Local Variables:
  *  version-control: t
  *  indent-tabs-mode: t
- *  c-file-style: "ellemtel"
- *  c-basic-offset: 8
+ *  c-file-style: "linux"
  * End:
  */
