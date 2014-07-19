@@ -44,6 +44,11 @@ else
 fi
 
 
+PIDFILE=/tmp/inadyn.pid
+
 # Run inadyn
 /usr/bin/inadyn --config /etc/inadyn.conf --iterations 1 \
-    --drop-privs $USER:$GROUP --pidfile /tmp/inadyn.pid
+    --drop-privs $USER:$GROUP --pidfile "$PIDFILE"
+
+# Remove pidfile
+[ -f "$PIDFILE" ] && rm -f "$PIDFILE"

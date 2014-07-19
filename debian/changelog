@@ -1,8 +1,48 @@
+inadyn (1.99.9-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- Timur Birsh <taem@linukz.org>  Sat, 19 Jul 2014 18:55:35 +0600
+
 inadyn (1.98.1+git20130517-2~bpo70+1) wheezy-backports; urgency=low
 
   * Rebuild for wheezy-backports.
 
  -- Timur Birsh <taem@linukz.org>  Sat, 25 May 2013 23:11:01 +0600
+
+inadyn (1.99.4-1) unstable; urgency=low
+
+  * New upstream release:
+    - Fix basic HTTP authentication. Closes: #718934.
+
+ -- Timur Birsh <taem@linukz.org>  Fri, 09 Aug 2013 13:31:20 +0600
+
+inadyn (1.99.3-1) unstable; urgency=low
+
+  * New upstream release:
+    - new option --cachefile to specify cache file.
+    - new option --bind to set interface to bind to.
+    - old option --iface used to obtain interface IP
+      with no external IP check.
+  * Fix problem with /run/inadyn access when upgrading from 1.96.2-1.
+    Closes: #709391, #711226.
+  * debian/inadyn.ppp.ip-up:
+    - write PID into /tmp/inadyn.pid.
+  * debian/control:
+    - add full list of the supported services to extended description.
+  * debian/inadyn.init:
+    - use log_action_msg() instead of log_success_msg().
+    - fix lintian warning init.d-script-call-internal-API.
+  * debian/docs:
+    - README renamed to README.md.
+  * debian/rules:
+    - tell 'make' do not hide build info.
+  * Drop debian/patches, merged upstream.
+  * Update debian/inadyn.conf.
+  * Add debian/links:
+    - add symlink for /usr/sbin/inadyn to /usr/bin/inadyn.
+
+ -- Timur Birsh <taem@linukz.org>  Fri, 07 Jun 2013 11:40:43 +0600
 
 inadyn (1.98.1+git20130517-2) unstable; urgency=low
 
