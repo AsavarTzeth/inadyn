@@ -1,7 +1,7 @@
 /* Interface for HTTP functions
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
- * Copyright (C) 2010-2013  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,15 +21,30 @@
 #ifndef INADYN_HTTP_H_
 #define INADYN_HTTP_H_
 
+#ifdef CONFIG_OPENSSL
+#include <openssl/crypto.h>
+#include <openssl/x509.h>
+#include <openssl/pem.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
+
+#include "error.h"
 #include "os.h"
-#include "errorcode.h"
 #include "tcp.h"
 
 #define HTTP_DEFAULT_TIMEOUT	10000	/* msec */
 #define	HTTP_DEFAULT_PORT	80
 
 typedef struct {
-	tcp_sock_t super;
+	tcp_sock_t tcp;
+
+	int        ssl_enabled;
+#ifdef CONFIG_OPENSSL
+	SSL       *ssl;
+	SSL_CTX   *ssl_ctx;
+#endif
+
 	int        initialized;
 } http_t;
 
@@ -50,10 +65,11 @@ typedef struct {
 int http_construct          (http_t *client);
 int http_destruct           (http_t *client, int num);
 
-int http_initialize         (http_t *client, char *msg);
-int http_shutdown           (http_t *client);
+int http_init               (http_t *client, char *msg);
+int http_exit               (http_t *client);
 
 int http_transaction        (http_t *client, http_trans_t *trans);
+int http_status_valid       (int status);
 
 int http_set_port           (http_t *client, int  porg);
 int http_get_port           (http_t *client, int *port);

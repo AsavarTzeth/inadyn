@@ -1,7 +1,7 @@
-/* IP functions
+/* Interface for IP functions
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
- * Copyright (C) 2010-2013  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -14,8 +14,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * along with this program; if not, visit the Free Software Foundation
+ * website at http://www.gnu.org/licenses/gpl-2.0.html or write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
  */
 
 #include <sys/types.h>
@@ -30,7 +32,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "debug_if.h"
+#include "debug.h"
 #include "ip.h"
 
 
@@ -56,13 +58,13 @@ int ip_destruct(ip_sock_t *ip)
 	ASSERT(ip);
 
 	if (ip->initialized == 1)
-		ip_shutdown(ip);
+		ip_exit(ip);
 
 	return 0;
 }
 
 /* Sets up the object. */
-int ip_initialize(ip_sock_t *ip)
+int ip_init(ip_sock_t *ip)
 {
 	int rc = 0;
 	struct ifreq ifr;
@@ -144,7 +146,7 @@ int ip_initialize(ip_sock_t *ip)
 	while (0);
 
 	if (rc) {
-		ip_shutdown(ip);
+		ip_exit(ip);
 		return rc;
 	}
 
@@ -154,7 +156,7 @@ int ip_initialize(ip_sock_t *ip)
 }
 
 /* Disconnect and some other clean up. */
-int ip_shutdown(ip_sock_t *ip)
+int ip_exit(ip_sock_t *ip)
 {
 	ASSERT(ip);
 
@@ -204,7 +206,6 @@ int ip_recv(ip_sock_t *ip, char *buf, int len, int *recv_len)
 	int rc = 0;
 	int remaining_bytes = len;
 	int total_bytes = 0;
-	int bytes = 0;
 
 	ASSERT(ip);
 	ASSERT(buf);
@@ -214,6 +215,7 @@ int ip_recv(ip_sock_t *ip, char *buf, int len, int *recv_len)
 		return RC_IP_OBJECT_NOT_INITIALIZED;
 
 	while (remaining_bytes > 0) {
+		int bytes;
 		int chunk_size = remaining_bytes > IP_DEFAULT_READ_CHUNK_SIZE
 			? IP_DEFAULT_READ_CHUNK_SIZE
 			: remaining_bytes;

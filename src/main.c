@@ -1,6 +1,7 @@
-/* Small cmd line program useful for maintaining an IP address in a Dynamic DNS system.
+/* Inadyn is a simple and small dynamic DNS (DDNS) client
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
+ * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -13,15 +14,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * along with this program; if not, visit the Free Software Foundation
+ * website at http://www.gnu.org/licenses/gpl-2.0.html or write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301, USA.
  */
 
 #include <stdlib.h>
 
-#include "debug_if.h"
-#include "dyndns.h"
-#include "errorcode.h"
+#include "debug.h"
+#include "ddns.h"
+#include "error.h"
 
 /**
    basic resource allocations for the dyn_dns object
@@ -32,7 +35,6 @@ static int alloc_context(ddns_t **pctx)
 	ddns_t *ctx;
 	int http_to_dyndns_constructed = 0;
 	int http_to_ip_constructed = 0;
-	int i;
 
 	if (!pctx)
 		return RC_INVALID_POINTER;
@@ -42,6 +44,8 @@ static int alloc_context(ddns_t **pctx)
 		return RC_OUT_OF_MEMORY;
 
 	do {
+		int i;
+
 		ctx = *pctx;
 		memset(ctx, 0, sizeof(ddns_t));
 
@@ -139,9 +143,6 @@ static void free_context(ddns_t *ctx)
 	free(ctx->cfgfile);
 	ctx->cfgfile = NULL;
 
-	free(ctx->pidfile);
-	ctx->pidfile = NULL;
-
 	free(ctx->external_command);
 	ctx->external_command = NULL;
 
@@ -151,9 +152,6 @@ static void free_context(ddns_t *ctx)
 	free(ctx->check_interface);
 	ctx->check_interface = NULL;
 
-	free(ctx->cache_file);
-	ctx->cache_file = NULL;
-
 	free(ctx);
 }
 
@@ -161,6 +159,11 @@ int main(int argc, char *argv[])
 {
 	int rc = 0, restart;
 	ddns_t *ctx = NULL;
+
+#ifdef CONFIG_OPENSSL
+	SSL_library_init();
+	SSL_load_error_strings();
+#endif
 
 	do {
 		restart = 0;
@@ -178,6 +181,10 @@ int main(int argc, char *argv[])
 	} while (restart);
 
 	os_close_dbg_output();
+
+#ifdef CONFIG_OPENSSL
+	ERR_free_strings();
+#endif
 
 	return rc;
 }

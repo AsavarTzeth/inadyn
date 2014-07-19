@@ -1,7 +1,7 @@
-/* HTTP functions
+/* Interface for HTTP functions
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
- * Copyright (C) 2010-2013  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -14,27 +14,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * along with this program; if not, visit the Free Software Foundation
+ * website at http://www.gnu.org/licenses/gpl-2.0.html or write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
  */
 
 #include <string.h>
+
+#include "ssl.h"
 #include "http.h"
-#include "errorcode.h"
-
-#define super_construct(p) tcp_construct(p)
-#define super_destruct(p)  tcp_destruct(p)
-#define super_init(p,msg)  tcp_initialize(p, msg)
-#define super_shutdown(p)  tcp_shutdown(p)
-
+#include "error.h"
 
 int http_construct(http_t *client)
 {
 	ASSERT(client);
 
-	DO(super_construct(&client->super));
+	DO(tcp_construct(&client->tcp));
 
-	memset((char *)client + sizeof(client->super), 0, sizeof(*client) - sizeof(client->super));
+	memset((char *)client + sizeof(client->tcp), 0, sizeof(*client) - sizeof(client->tcp));
 	client->initialized = 0;
 
 	return 0;
@@ -46,7 +44,7 @@ int http_destruct(http_t *client, int num)
 	int i = 0, rv = 0;
 
 	while (i < num)
-		rv = super_destruct(&client[i++].super);
+		rv = tcp_destruct(&client[i++].tcp);
 
 	return rv;
 }
@@ -69,18 +67,20 @@ static int local_set_params(http_t *client)
 }
 
 /* Sets up the object. */
-int http_initialize(http_t *client, char *msg)
+int http_init(http_t *client, char *msg)
 {
-	int rc;
+	int rc = 0;
 
 	do {
 		TRY(local_set_params(client));
-		TRY(super_init(&client->super, msg));
+		TRY(tcp_init(&client->tcp, msg));
+		if (client->ssl_enabled)
+			TRY(ssl_init(client, msg));
 	}
 	while (0);
 
 	if (rc) {
-		http_shutdown(client);
+		http_exit(client);
 		return rc;
 	}
 
@@ -90,7 +90,7 @@ int http_initialize(http_t *client, char *msg)
 }
 
 /* Disconnect and some other clean up. */
-int http_shutdown(http_t *client)
+int http_exit(http_t *client)
 {
 	ASSERT(client);
 
@@ -98,8 +98,10 @@ int http_shutdown(http_t *client)
 		return 0;
 
 	client->initialized = 0;
+	if (client->ssl_enabled)
+		ssl_exit(client);
 
-	return super_shutdown(&client->super);
+	return tcp_exit(&client->tcp);
 }
 
 static void http_response_parse(http_trans_t *trans)
@@ -116,14 +118,18 @@ static void http_response_parse(http_trans_t *trans)
 		trans->p_rsp_body = body;
 	}
 
-	if (sscanf(trans->p_rsp, "HTTP/1.%*c %d %255[^\r\n]", &status, trans->status_desc) == 2)
+	/* %*c         : HTTP/1.0, 1.1 etc, discard read value
+	 * %4d         : HTTP status code, e.g. 200
+	 * %255[^\r\n] : HTTP status text, e.g. OK -- Reads max 255 bytes, including \0, not \r or \n
+	 */
+	if (sscanf(trans->p_rsp, "HTTP/1.%*c %4d %255[^\r\n]", &status, trans->status_desc) == 2)
 		trans->status = status;
 }
 
 /* Send req and get response */
 int http_transaction(http_t *client, http_trans_t *trans)
 {
-	int rc;
+	int rc = 0;
 
 	ASSERT(client);
 	ASSERT(trans);
@@ -131,9 +137,17 @@ int http_transaction(http_t *client, http_trans_t *trans)
 	if (!client->initialized)
 		return RC_HTTP_OBJECT_NOT_INITIALIZED;
 
+	trans->rsp_len = 0;
 	do {
-		TRY(tcp_send(&client->super, trans->p_req, trans->req_len));
-		TRY(tcp_recv(&client->super, trans->p_rsp, trans->max_rsp_len, &trans->rsp_len));
+		if (client->ssl_enabled) {
+#ifdef CONFIG_OPENSSL
+			TRY(ssl_send(client, trans->p_req, trans->req_len));
+			TRY(ssl_recv(client, trans->p_rsp, trans->max_rsp_len, &trans->rsp_len));
+		} else {
+#endif
+			TRY(tcp_send(&client->tcp, trans->p_req, trans->req_len));
+			TRY(tcp_recv(&client->tcp, trans->p_rsp, trans->max_rsp_len, &trans->rsp_len));
+		}
 	}
 	while (0);
 
@@ -143,55 +157,68 @@ int http_transaction(http_t *client, http_trans_t *trans)
 	return rc;
 }
 
+/*
+ * Validate HTTP status code
+ */
+int http_status_valid(int status)
+{
+	if (status == 200)
+		return 0;
+
+	if (status >= 500 && status < 600)
+		return RC_DYNDNS_RSP_RETRY_LATER;
+
+	return RC_DYNDNS_RSP_NOTOK;
+}
 
 int http_set_port(http_t *client, int port)
 {
 	ASSERT(client);
-	return tcp_set_port(&client->super, port);
+	return tcp_set_port(&client->tcp, port);
 }
 
 int http_get_port(http_t *client, int *port)
 {
 	ASSERT(client);
-	return tcp_get_port(&client->super, port);
+	return tcp_get_port(&client->tcp, port);
 }
 
 
 int http_set_remote_name(http_t *client, const char *name)
 {
 	ASSERT(client);
-	return tcp_set_remote_name(&client->super, name);
+	return tcp_set_remote_name(&client->tcp, name);
 }
 
 int http_get_remote_name(http_t *client, const char **name)
 {
 	ASSERT(client);
-	return tcp_get_remote_name(&client->super, name);
+	return tcp_get_remote_name(&client->tcp, name);
 }
 
 int http_set_remote_timeout(http_t *client, int timeout)
 {
 	ASSERT(client);
-	return tcp_set_remote_timeout(&client->super, timeout);
+	return tcp_set_remote_timeout(&client->tcp, timeout);
 }
 
 int http_get_remote_timeout(http_t *client, int *timeout)
 {
 	ASSERT(client);
-	return tcp_get_remote_timeout(&client->super, timeout);
+	return tcp_get_remote_timeout(&client->tcp, timeout);
 }
 
 int http_set_bind_iface(http_t *client, char *ifname)
 {
 	ASSERT(client);
-	return tcp_set_bind_iface(&client->super, ifname);
+	return tcp_set_bind_iface(&client->tcp, ifname);
 }
 
 int http_get_bind_iface(http_t *client, char **ifname)
 {
 	ASSERT(client);
 	ASSERT(ifname);
-	return tcp_get_bind_iface(&client->super, ifname);
+	return tcp_get_bind_iface(&client->tcp, ifname);
 }
 
 /**

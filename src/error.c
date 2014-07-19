@@ -1,5 +1,7 @@
-/*
+/* Error code definitions
+ *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
+ * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -12,11 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * along with this program; if not, visit the Free Software Foundation
+ * website at http://www.gnu.org/licenses/gpl-2.0.html or write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301, USA.
  */
 
-#include "errorcode.h"
+#include "error.h"
 #include <stdlib.h>
 
 typedef struct {
@@ -44,6 +48,13 @@ static const ERROR_NAME global_error_table[] = {
 
 	{RC_HTTP_OBJECT_NOT_INITIALIZED, "RC_HTTP_OBJECT_NOT_INITIALIZED"},
 	{RC_HTTP_BAD_PARAMETER, "RC_HTTP_BAD_PARAMETER"},
+
+	{ RC_HTTPS_OUT_OF_MEMORY,       "RC_HTTPS_OUT_OF_MEMORY"       },
+	{ RC_HTTPS_FAILED_CONNECT,      "RC_HTTPS_FAILED_CONNECT"      },
+	{ RC_HTTPS_FAILED_GETTING_CERT, "RC_HTTPS_FAILED_GETTING_CERT" },
+	{ RC_HTTPS_NO_SSL_SUPPORT,      "RC_HTTPS_NO_SSL_SUPPORT"      },
+	{ RC_HTTPS_SEND_ERROR,          "RC_HTTPS_SEND_ERROR"          },
+	{ RC_HTTPS_RECV_ERROR,          "RC_HTTPS_RECV_ERROR"          },
 
 	{RC_DYNDNS_BUFFER_TOO_SMALL, "RC_DYNDNS_BUFFER_TOO_SMALL"},
 	{RC_DYNDNS_INVALID_IP_ADDR_IN_HTTP_RESPONSE,

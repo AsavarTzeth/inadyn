@@ -1,7 +1,7 @@
 /* Interface for IP functions
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
- * Copyright (C) 2010-2013  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -14,15 +14,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * along with this program; if not, visit the Free Software Foundation
+ * website at http://www.gnu.org/licenses/gpl-2.0.html or write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301, USA.
  */
 
 #ifndef INADYN_IP_H_
 #define INADYN_IP_H_
 
 #include "os.h"
-#include "errorcode.h"
+#include "error.h"
 
 #define IP_DEFAULT_TIMEOUT		20000	/* msec */
 #define IP_SOCKET_MAX_PORT		65535
@@ -53,8 +55,8 @@ typedef struct {
 int ip_construct          (ip_sock_t *ip);
 int ip_destruct           (ip_sock_t *ip);
 
-int ip_initialize         (ip_sock_t *ip);
-int ip_shutdown           (ip_sock_t *ip);
+int ip_init               (ip_sock_t *ip);
+int ip_exit               (ip_sock_t *ip);
 
 int ip_send               (ip_sock_t *ip, const char *buf, int len);
 int ip_recv               (ip_sock_t *ip,       char *buf, int len, int *recv_len);

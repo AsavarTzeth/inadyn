@@ -1,7 +1,7 @@
 /* Interface for TCP functions
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
- * Copyright (C) 2010-2013  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -14,25 +14,27 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * along with this program; if not, visit the Free Software Foundation
+ * website at http://www.gnu.org/licenses/gpl-2.0.html or write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301, USA.
 */
 
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "debug_if.h"
+#include "debug.h"
 #include "tcp.h"
 
 int tcp_construct(tcp_sock_t *tcp)
 {
 	ASSERT(tcp);
 
-	DO(ip_construct(&tcp->super));
+	DO(ip_construct(&tcp->ip));
 
 	/* Reset its part of the struct (skip IP part) */
-	memset(((char *)tcp + sizeof(tcp->super)), 0, sizeof(*tcp) - sizeof(tcp->super));
+	memset(((char *)tcp + sizeof(tcp->ip)), 0, sizeof(*tcp) - sizeof(tcp->ip));
 	tcp->initialized = 0;
 
 	return 0;
@@ -43,9 +45,9 @@ int tcp_destruct(tcp_sock_t *tcp)
 	ASSERT(tcp);
 
 	if (tcp->initialized == 1)
-		tcp_shutdown(tcp);
+		tcp_exit(tcp);
 
-	return ip_destruct(&tcp->super);
+	return ip_destruct(&tcp->ip);
 }
 
 static int local_set_params(tcp_sock_t *tcp)
@@ -93,10 +95,10 @@ static int check_error(int sd, int msec)
 	return 1;
 }
 
-/* On error tcp_shutdown() is called by upper layers. */
-int tcp_initialize(tcp_sock_t *tcp, char *msg)
+/* On error tcp_exit() is called by upper layers. */
+int tcp_init(tcp_sock_t *tcp, char *msg)
 {
-	int sd, rc = 0;
+	int rc = 0;
 	char host[NI_MAXHOST];
 	struct timeval sv;
 	struct sockaddr sa;
@@ -105,10 +107,12 @@ int tcp_initialize(tcp_sock_t *tcp, char *msg)
 	ASSERT(tcp);
 
 	do {
-		TRY(local_set_params(tcp));
-		TRY(ip_initialize(&tcp->super));
+		int sd;
 
-		if (tcp->super.type != TYPE_TCP)
+		TRY(local_set_params(tcp));
+		TRY(ip_init(&tcp->ip));
+
+		if (tcp->ip.type != TYPE_TCP)
 			return RC_IP_BAD_PARAMETER;
 
 		sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -118,13 +122,13 @@ int tcp_initialize(tcp_sock_t *tcp, char *msg)
 			break;
 		}
 
-		/* Call to socket() OK, allow tcp_shutdown() to run to
+		/* Call to socket() OK, allow tcp_exit() to run to
 		 * prevent socket leak if any of the below calls fail. */
-		tcp->super.socket = sd;
+		tcp->ip.socket = sd;
 		tcp->initialized  = 1;
 
-		if (tcp->super.bound == 1) {
-			if (bind(sd, (struct sockaddr *)&tcp->super.local_addr, sizeof(struct sockaddr_in)) < 0) {
+		if (tcp->ip.bound == 1) {
+			if (bind(sd, (struct sockaddr *)&tcp->ip.local_addr, sizeof(struct sockaddr_in)) < 0) {
 				logit(LOG_WARNING, "Failed binding client socket to local address: %s", strerror(errno));
 				rc = RC_IP_SOCKET_BIND_ERROR;
 				break;
@@ -132,19 +136,20 @@ int tcp_initialize(tcp_sock_t *tcp, char *msg)
 		}
 
 		/* Attempt to set TCP timers, silently fall back to OS defaults */
-		sv.tv_sec  =  tcp->super.timeout / 1000;
-		sv.tv_usec = (tcp->super.timeout % 1000) * 1000;
-		setsockopt(tcp->super.socket, SOL_SOCKET, SO_RCVTIMEO, &sv, sizeof(sv));
-		setsockopt(tcp->super.socket, SOL_SOCKET, SO_SNDTIMEO, &sv, sizeof(sv));
+		sv.tv_sec  =  tcp->ip.timeout / 1000;
+		sv.tv_usec = (tcp->ip.timeout % 1000) * 1000;
+		setsockopt(tcp->ip.socket, SOL_SOCKET, SO_RCVTIMEO, &sv, sizeof(sv));
+		setsockopt(tcp->ip.socket, SOL_SOCKET, SO_SNDTIMEO, &sv, sizeof(sv));
 
-		sa    = tcp->super.remote_addr;
-		salen = tcp->super.remote_len;
-		if (!getnameinfo(&sa, salen, host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST)) {
-			logit(LOG_INFO, "%s, connecting to %s(%s)", msg, tcp->super.p_remote_host_name, host);
-		}
+		sa    = tcp->ip.remote_addr;
+		salen = tcp->ip.remote_len;
+		if (!getnameinfo(&sa, salen, host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
+			logit(LOG_INFO, "%s, connecting to %s(%s:%d)", msg, tcp->ip.p_remote_host_name, host, tcp->ip.port);
+		else
+			logit(LOG_ERR, "%s, failed resolving %s!", msg, host);
 
 		if (connect(sd, &sa, salen)) {
-			if (!check_error(sd, tcp->super.timeout))
+			if (!check_error(sd, tcp->ip.timeout))
 				break; /* OK */
 
 			logit(LOG_WARNING, "Failed connecting to remote server: %s", strerror(errno));
@@ -154,14 +159,14 @@ int tcp_initialize(tcp_sock_t *tcp, char *msg)
 	} while (0);
 
 	if (rc) {
-		tcp_shutdown(tcp);
+		tcp_exit(tcp);
 		return rc;
 	}
 
 	return 0;
 }
 
-int tcp_shutdown(tcp_sock_t *tcp)
+int tcp_exit(tcp_sock_t *tcp)
 {
 	ASSERT(tcp);
 
@@ -170,7 +175,7 @@ int tcp_shutdown(tcp_sock_t *tcp)
 
 	tcp->initialized = 0;
 
-	return ip_shutdown(&tcp->super);
+	return ip_exit(&tcp->ip);
 }
 
 int tcp_send(tcp_sock_t *tcp, const char *buf, int len)
@@ -180,7 +185,7 @@ int tcp_send(tcp_sock_t *tcp, const char *buf, int len)
 	if (!tcp->initialized)
 		return RC_TCP_OBJECT_NOT_INITIALIZED;
 
-	return ip_send(&tcp->super, buf, len);
+	return ip_send(&tcp->ip, buf, len);
 }
 
 int tcp_recv(tcp_sock_t *tcp, char *buf, int buf_len, int *recv_len)
@@ -190,56 +195,56 @@ int tcp_recv(tcp_sock_t *tcp, char *buf, int buf_len, int *recv_len)
 	if (!tcp->initialized)
 		return RC_TCP_OBJECT_NOT_INITIALIZED;
 
-	return ip_recv(&tcp->super, buf, buf_len, recv_len);
+	return ip_recv(&tcp->ip, buf, buf_len, recv_len);
 }
 
 int tcp_set_port(tcp_sock_t *tcp, int port)
 {
 	ASSERT(tcp);
 
-	return ip_set_port(&tcp->super, port);
+	return ip_set_port(&tcp->ip, port);
 }
 
 int tcp_get_port(tcp_sock_t *tcp, int *port)
 {
 	ASSERT(tcp);
 
-	return ip_get_port(&tcp->super, port);
+	return ip_get_port(&tcp->ip, port);
 }
 
 int tcp_set_remote_name(tcp_sock_t *tcp, const char *p)
 {
 	ASSERT(tcp);
 
-	return ip_set_remote_name(&tcp->super, p);
+	return ip_set_remote_name(&tcp->ip, p);
 }
 
 int tcp_get_remote_name(tcp_sock_t *tcp, const char **p)
 {
 	ASSERT(tcp);
 
-	return ip_get_remote_name(&tcp->super, p);
+	return ip_get_remote_name(&tcp->ip, p);
 }
 
 int tcp_set_remote_timeout(tcp_sock_t *tcp, int p)
 {
 	ASSERT(tcp);
 
-	return ip_set_remote_timeout(&tcp->super, p);
+	return ip_set_remote_timeout(&tcp->ip, p);
 }
 
 int tcp_get_remote_timeout(tcp_sock_t *tcp, int *p)
 {
 	ASSERT(tcp);
 
-	return ip_get_remote_timeout(&tcp->super, p);
+	return ip_get_remote_timeout(&tcp->ip, p);
 }
 
 int tcp_set_bind_iface(tcp_sock_t *tcp, char *ifname)
 {
 	ASSERT(tcp);
 
-	return ip_set_bind_iface(&tcp->super, ifname);
+	return ip_set_bind_iface(&tcp->ip, ifname);
 }
 
 int tcp_get_bind_iface(tcp_sock_t *tcp, char **ifname)
@@ -247,7 +252,7 @@ int tcp_get_bind_iface(tcp_sock_t *tcp, char **ifname)
 	ASSERT(tcp);
 	ASSERT(ifname);
 
-	return ip_get_bind_iface(&tcp->super, ifname);
+	return ip_get_bind_iface(&tcp->ip, ifname);
 }
 
 /**
