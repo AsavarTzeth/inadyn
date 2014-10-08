@@ -74,7 +74,7 @@ static int set_verbose_handler(cmd_data_t *cmd, int num, void *context);
 static int get_proxy_server_handler(cmd_data_t *cmd, int num, void *context);
 static int get_options_from_file_handler(cmd_data_t *cmd, int num, void *context);
 static int set_iterations_handler(cmd_data_t *cmd, int num, void *context);
-#ifdef CONFIG_OPENSSL
+#ifdef ENABLE_SSL
 static int enable_ssl(cmd_data_t *cmd, int num, void *context);
 #endif
 static int set_syslog_handler(cmd_data_t *cmd, int num, void *context);
@@ -161,25 +161,26 @@ static cmd_desc_t cmd_options_table[] = {
 
 	{"-S", 1, {get_dyndns_system_handler, NULL}, ""},
 	{"--system", 1, {get_dyndns_system_handler, NULL}, "<PROVIDER>\n"
-	 "\t\t\tSelect DDNS service provider, one of the following.\n"
-	 "\t\t\to For dyndns.org:         default@dyndns.org\n"
-	 "\t\t\to For freedns.afraid.org: default@freedns.afraid.org\n"
-	 "\t\t\to For zoneedit.com:       default@zoneedit.com\n"
-	 "\t\t\to For no-ip.com:          default@no-ip.com\n"
-	 "\t\t\to For easydns.com:        default@easydns.com\n"
-	 "\t\t\to For tzo.com:            default@tzo.com\n"
-	 "\t\t\to For 3322.org:           dyndns@3322.org\n"
-	 "\t\t\to For dnsomatic.com:      default@dnsomatic.com\n"
-	 "\t\t\to For tunnelbroker.net:   ipv6tb@he.net\n"
-	 "\t\t\to For dns.he.net:         dyndns@he.net\n"
-	 "\t\t\to For dynsip.org:         default@dynsip.org\n"
-	 "\t\t\to For sitelutions.com:    default@sitelutions.com\n"
-	 "\t\t\to For dnsexit.com:        default@dnsexit.com\n"
-	 "\t\t\to For changeip.com:       default@changeip.com\n"
-	 "\t\t\to For zerigo.com:         default@zerigo.com\n"
-	 "\t\t\to For dhis.org:           default@dhis.org\n"
-	 "\t\t\to For generic:            custom@http_srv_basic_auth\n\n"
-	 "\t\t\tDefault value:            default@dyndns.org"},
+	 "\t\t\tDDNS service provider, one of:\n"
+	 "\t\t\t     default@dyndns.org\n"
+	 "\t\t\t     default@freedns.afraid.org\n"
+	 "\t\t\t     default@zoneedit.com\n"
+	 "\t\t\t     default@no-ip.com\n"
+	 "\t\t\t     default@easydns.com\n"
+	 "\t\t\t     default@tzo.com\n"
+	 "\t\t\t     dyndns@3322.org\n"
+	 "\t\t\t     default@dnsomatic.com\n"
+	 "\t\t\t     ipv6tb@he.net\n"
+	 "\t\t\t     dyndns@he.net\n"
+	 "\t\t\t     default@dynsip.org\n"
+	 "\t\t\t     default@sitelutions.com\n"
+	 "\t\t\t     default@dnsexit.com\n"
+	 "\t\t\t     default@changeip.com\n"
+	 "\t\t\t     default@zerigo.com\n"
+	 "\t\t\t     default@dhis.org\n"
+	 "\t\t\t     ipv4@nsupdate.info\n"
+	 "\t\t\t     default@duckdns.org\n"
+	 "\t\t\t     custom@http_srv_basic_auth"},
 	{"--dyndns_system", 1, {get_dyndns_system_handler, NULL}, NULL},
 
 	{"-x", 1, {get_proxy_server_handler, NULL}, ""},
@@ -196,7 +197,7 @@ static cmd_desc_t cmd_options_table[] = {
 	{"-P", 1, {set_pidfile, NULL}, ""},
 	{"--pidfile", 1, {set_pidfile, NULL}, "<FILE>\n" "\t\t\tSet pidfile, default " DEFAULT_PIDFILE},
 
-#ifdef CONFIG_OPENSSL
+#ifdef ENABLE_SSL
 	{"-s",    0, {enable_ssl, NULL}, ""},
 	{"--ssl", 0, {enable_ssl, NULL}, "Use HTTPS to connect to this DDNS service provider, default HTTP"},
 #endif
@@ -303,7 +304,7 @@ int cmd_add_val(cmd_data_t *cmd, char *p_val)
 	if (!p)
 		return RC_OUT_OF_MEMORY;
 
-	strcpy(p, p_val);
+	strlcpy(p, p_val, strlen(p_val) + 1);
 	cmd->argv[cmd->argc] = p;
 	cmd->argc++;
 
@@ -408,10 +409,7 @@ static void print_help_page(void)
 {
 	cmd_desc_t *it;
 
-	puts("Inadyn is a dynamic DNS (DDNS) client.  It does periodic and/or on-demand checks\n"
-	     "of your externally visible IP address and updates the hostname to IP mapping at\n"
-	     "your DDNS service provider when necessary.\n");
-	puts("dyndns.org:\n" "\tinadyn -u username -p password -a my.registered.name\n");
+	puts("Usage: inadyn [OPTIONS]\n");
 
 	it = cmd_options_table;
 	while (it->option != NULL) {
@@ -419,16 +417,10 @@ static void print_help_page(void)
 			if (strlen(it->option) == 2)
 				printf("  %s, ", it->option);
 			else
-				printf("%-16s  %s\n", it->option, it->description);
+				printf("%-16s  %s\n\n", it->option, it->description);
 		}
 		++it;
 	}
-
-	puts("==============================================================================");
-	puts("SIGINT/TERM: Stops inadyn");
-	puts("SIGUP      : Reload inadyn.conf");
-	puts("SIGUSR1    : Force update, works with the optional --fake-address");
-	puts("SIGUSR2    : Abort any wait and check now");
 }
 
 static int help_handler(cmd_data_t *cmd, int num, void *context)
@@ -546,7 +538,7 @@ static int get_logfile_name(cmd_data_t *cmd, int num, void *context)
 	if (sizeof(ctx->dbg.p_logfilename) < strlen(cmd->argv[num]))
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(ctx->dbg.p_logfilename, cmd->argv[num]);
+	strlcpy(ctx->dbg.p_logfilename, cmd->argv[num], sizeof(ctx->dbg.p_logfilename));
 
 	return 0;
 }
@@ -561,7 +553,7 @@ static int get_username_handler(cmd_data_t *cmd, int num, void *context)
 	if (sizeof(ctx->info[infid].creds.username) < strlen(cmd->argv[num]))
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(ctx->info[infid].creds.username, cmd->argv[num]);
+	strlcpy(ctx->info[infid].creds.username, cmd->argv[num], sizeof(ctx->info[infid].creds.username));
 
 	return 0;
 }
@@ -576,7 +568,7 @@ static int get_password_handler(cmd_data_t *cmd, int num, void *context)
 	if (sizeof(ctx->info[infid].creds.password) < strlen(cmd->argv[num]))
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(ctx->info[infid].creds.password, (cmd->argv[num]));
+	strlcpy(ctx->info[infid].creds.password, cmd->argv[num], sizeof(ctx->info[infid].creds.password));
 
 	return 0;
 }
@@ -594,29 +586,32 @@ static int get_alias_handler(cmd_data_t *cmd, int num, void *context)
 	if (sizeof(ctx->info[infid].alias[ctx->info[infid].alias_count].name) < strlen(cmd->argv[num]))
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(ctx->info[infid].alias[ctx->info[infid].alias_count].name, (cmd->argv[num]));
+	strlcpy(ctx->info[infid].alias[ctx->info[infid].alias_count].name, cmd->argv[num], sizeof(ctx->info[infid].alias[ctx->info[infid].alias_count].name));
 	ctx->info[infid].alias_count++;
 
 	return 0;
 }
 
-static int get_name_and_port(char *p_src, char *p_dest_name, int *p_dest_port)
+/* p_len is the size of the p_dest_name buffer */
+static int get_name_and_port(char *p_src, char *p_dest_name, int *p_dest_port, size_t p_len)
 {
 	const char *p_port = strstr(p_src, ":");
 
 	if (p_port) {
-		int port_nr, len;
-		int port_ok = sscanf(p_port + 1, "%d", &port_nr);
+		int port_nr, port_ok = sscanf(p_port + 1, "%d", &port_nr);
+		size_t len;
 
 		if (port_ok != 1)
 			return RC_DYNDNS_INVALID_OPTION;
 
 		*p_dest_port = port_nr;
 		len = p_port - p_src;
+		if (len >= p_len)
+			len = p_len - 1;
 		memcpy(p_dest_name, p_src, len);
 		p_dest_name[len] = 0;
 	} else {
-		strcpy(p_dest_name, p_src);
+		strlcpy(p_dest_name, p_src, p_len);
 	}
 
 	return 0;
@@ -642,14 +637,14 @@ static int get_checkip_name_handler(cmd_data_t *cmd, int num, void *context)
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
 	ctx->info[infid].checkip_name.port = HTTP_DEFAULT_PORT;
-	rc = get_name_and_port(cmd->argv[num], ctx->info[infid].checkip_name.name, &port);
+	rc = get_name_and_port(cmd->argv[num], ctx->info[infid].checkip_name.name, &port, sizeof(ctx->info[infid].checkip_name.name));
 	if (rc == 0 && port != -1)
 		ctx->info[infid].checkip_name.port = port;
 
 	if (sizeof(ctx->info[infid].checkip_url) < strlen(cmd->argv[num + 1]) + 1)
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(ctx->info[infid].checkip_url, cmd->argv[num + 1]);
+	strlcpy(ctx->info[infid].checkip_url, cmd->argv[num + 1], sizeof(ctx->info[infid].checkip_url));
 
 	return rc;
 }
@@ -667,7 +662,7 @@ static int get_dns_server_name_handler(cmd_data_t *cmd, int num, void *context)
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
 	ctx->info[infid].server_name.port = HTTP_DEFAULT_PORT;
-	rc = get_name_and_port(cmd->argv[num], ctx->info[infid].server_name.name, &port);
+	rc = get_name_and_port(cmd->argv[num], ctx->info[infid].server_name.name, &port, sizeof(ctx->info[infid].server_name.name));
 	if (rc == 0 && port != -1)
 		ctx->info[infid].server_name.port = port;
 
@@ -684,7 +679,7 @@ int get_dns_server_url_handler(cmd_data_t *cmd, int num, void *context)
 	if (sizeof(ctx->info[infid].server_url) < strlen(cmd->argv[num]))
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
-	strcpy(ctx->info[infid].server_url, cmd->argv[num]);
+	strlcpy(ctx->info[infid].server_url, cmd->argv[num], sizeof(ctx->info[infid].server_url));
 
 	return 0;
 }
@@ -704,7 +699,7 @@ static int get_proxy_server_handler(cmd_data_t *cmd, int num, void *context)
 		return RC_DYNDNS_BUFFER_TOO_SMALL;
 
 	ctx->info[infid].proxy_server_name.port = HTTP_DEFAULT_PORT;
-	rc = get_name_and_port(cmd->argv[num], ctx->info[infid].proxy_server_name.name, &port);
+	rc = get_name_and_port(cmd->argv[num], ctx->info[infid].proxy_server_name.name, &port, sizeof(ctx->info[infid].proxy_server_name.name));
 	if (rc == 0 && port != -1)
 		ctx->info[infid].proxy_server_name.port = port;
 
@@ -785,7 +780,7 @@ static int forced_update_fake_addr(cmd_data_t *cmd, int num, void *context)
 	return 0;
 }
 
-#ifdef CONFIG_OPENSSL
+#ifdef ENABLE_SSL
 static int enable_ssl(cmd_data_t *cmd, int num, void *context)
 {
 	ddns_t *ctx = (ddns_t *)context;
@@ -955,6 +950,8 @@ static int set_pidfile(cmd_data_t *cmd, int num, void *context)
 	if (ctx == NULL)
 		return RC_INVALID_POINTER;
 
+	if (pidfile_path)
+		free(pidfile_path);
 	pidfile_path = strdup(cmd->argv[num]);
 
 	return 0;
@@ -1412,13 +1409,13 @@ int get_config_data(ddns_t *ctx, int argc, char *argv[])
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(info->checkip_name.name, info->system->checkip_name);
+				strlcpy(info->checkip_name.name, info->system->checkip_name, sizeof(info->checkip_name.name));
 
 				if (sizeof(info->checkip_url) < strlen(info->system->checkip_url)) {
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(info->checkip_url, info->system->checkip_url);
+				strlcpy(info->checkip_url, info->system->checkip_url, sizeof(info->checkip_url));
 			}
 
 			if (strlen(info->server_name.name) == 0) {
@@ -1426,13 +1423,13 @@ int get_config_data(ddns_t *ctx, int argc, char *argv[])
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(info->server_name.name, info->system->server_name);
+				strlcpy(info->server_name.name, info->system->server_name, sizeof(info->server_name.name));
 
 				if (sizeof(info->server_url) < strlen(info->system->server_url)) {
 					rc = RC_DYNDNS_BUFFER_TOO_SMALL;
 					break;
 				}
-				strcpy(info->server_url, info->system->server_url);
+				strlcpy(info->server_url, info->system->server_url, sizeof(info->server_url));
 			}
 		}
 		while (++i < ctx->info_count);

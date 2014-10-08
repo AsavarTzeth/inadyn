@@ -22,19 +22,42 @@
 #include "debug.h"
 #include "http.h"
 
+
+#ifdef ENABLE_SSL
+/* SSL SNI support: tell the servername we want to speak to */
+static int set_server_name(SSL *ssl, const char *sn)
+{
+	int rc = 0;
+
+#if defined(CONFIG_OPENSSL)
+	/* api returns 1 for success */
+	rc = !SSL_set_tlsext_host_name(ssl, sn);
+#elif defined(CONFIG_GNUTLS)
+	/* api returns 0 for success */
+	rc = gnutls_server_name_set(ssl->gnutls_state, GNUTLS_NAME_DNS, sn, strlen(sn));
+#endif
+
+	return rc;
+}
+#endif
+
 int ssl_init(http_t *client, char *msg)
 {
-#ifndef CONFIG_OPENSSL
+#ifndef ENABLE_SSL
 	(void)client;
 	(void)msg;
 	return 0;
 #else
-	char *subject, *issuer;
-	X509 *cert;
+	char buf[256];
+	const char *sn;
+#ifdef CONFIG_GNUTLS
+	const
+#endif
+		X509 *cert;
 
 	logit(LOG_INFO, "%s, initiating HTTPS ...", msg);
 
-	client->ssl_ctx = SSL_CTX_new(SSLv3_client_method());
+	client->ssl_ctx = SSL_CTX_new(SSLv23_client_method());
 	if (!client->ssl_ctx)
 		return RC_HTTPS_OUT_OF_MEMORY;
 
@@ -42,10 +65,13 @@ int ssl_init(http_t *client, char *msg)
 	if (!client->ssl)
 		return RC_HTTPS_OUT_OF_MEMORY;
 
+	http_get_remote_name(client, &sn);
+	if (set_server_name(client->ssl, sn))
+		return RC_HTTPS_SNI_ERROR;
+
 	SSL_set_fd(client->ssl, client->tcp.ip.socket);
 	if (-1 == SSL_connect(client->ssl))
 		return RC_HTTPS_FAILED_CONNECT;
-
 
 	logit(LOG_INFO, "SSL connection using %s", SSL_get_cipher(client->ssl));
 
@@ -54,17 +80,12 @@ int ssl_init(http_t *client, char *msg)
 	if (!cert)
 		return RC_HTTPS_FAILED_GETTING_CERT;
 
-	subject = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-	issuer  = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-	if (subject || issuer) {
-		logit(LOG_INFO, "Server certificate -- subject: %s; issuer: %s", subject ?: "<NONE>", issuer ?: "<NONE>");
-
-		if (subject)
-			OPENSSL_free(subject);
-
-		if (issuer)
-			OPENSSL_free(issuer);
-	}
+	/* Logging some cert details. Please note: X509_NAME_oneline doesn't
+	   work when giving NULL instead of a buffer. */
+	X509_NAME_oneline(X509_get_subject_name(cert), buf, 256);
+	logit(LOG_INFO, "SSL server cert subject: %s", buf);
+	X509_NAME_oneline(X509_get_issuer_name(cert), buf, 256);
+	logit(LOG_INFO, "SSL server cert issuer: %s", buf);
 
 	/* We could do all sorts of certificate verification stuff here before
 	   deallocating the certificate. */
@@ -76,7 +97,7 @@ int ssl_init(http_t *client, char *msg)
 
 int ssl_exit(http_t *client)
 {
-#ifndef CONFIG_OPENSSL
+#ifndef ENABLE_SSL
 	(void)client;
 	return 0;
 #else
@@ -93,7 +114,7 @@ int ssl_exit(http_t *client)
 
 int ssl_send(http_t *client, const char *buf, int len)
 {
-#ifndef CONFIG_OPENSSL
+#ifndef ENABLE_SSL
 	(void)client;
 	(void)buf;
 	(void)len;
@@ -112,7 +133,7 @@ int ssl_send(http_t *client, const char *buf, int len)
 
 int ssl_recv(http_t *client, char *buf, int buf_len, int *recv_len)
 {
-#ifndef CONFIG_OPENSSL
+#ifndef ENABLE_SSL
 	(void)client;
 	(void)buf;
 	(void)buf_len;

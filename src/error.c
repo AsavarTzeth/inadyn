@@ -20,7 +20,7 @@
  * Boston, MA  02110-1301, USA.
  */
 
-#include "error.h"
+#include "../include/error.h"
 #include <stdlib.h>
 
 typedef struct {
@@ -55,6 +55,7 @@ static const ERROR_NAME global_error_table[] = {
 	{ RC_HTTPS_NO_SSL_SUPPORT,      "RC_HTTPS_NO_SSL_SUPPORT"      },
 	{ RC_HTTPS_SEND_ERROR,          "RC_HTTPS_SEND_ERROR"          },
 	{ RC_HTTPS_RECV_ERROR,          "RC_HTTPS_RECV_ERROR"          },
+	{ RC_HTTPS_SNI_ERROR,           "RC_HTTPS_SNI_ERROR"           },
 
 	{RC_DYNDNS_BUFFER_TOO_SMALL, "RC_DYNDNS_BUFFER_TOO_SMALL"},
 	{RC_DYNDNS_INVALID_IP_ADDR_IN_HTTP_RESPONSE,

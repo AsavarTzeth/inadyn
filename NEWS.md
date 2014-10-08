@@ -1,6 +1,22 @@
 ChangeLog
 =========
 
+Version 1.99.11: ???????????
+----------------------------
+- Several fixes to add support for TLS 1.x with SNI, thanks to Thomas Waldmann
+- Add support https://nsupdate.info, thanks to Thomas Waldmann
+- Fix building on FreeBSD by converting to use GNU Configure & Build system
+
+Version 1.99.10: Sep 13 2014
+----------------------------
+- Fix issue #57: snprintf() causes loss of \= from password string
+- Fix issue #58: Add support for GnuTLS as the default SSL library
+- Fix bugs found by Coverity Scan
+- Fix memory leaks found by Glibc on PowerPC
+- Refactor string functions strcat()/strcpy() to use secure OpenBSD
+  variants strlcat()/strlcpy()
+- Fix include order problem with error.h
+
 Version 1.99.9: May 21 2014
 ---------------------------
 - Fix memory leak in new HTTPS support, found by Valgrind

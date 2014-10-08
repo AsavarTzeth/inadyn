@@ -1,4 +1,4 @@
-/* Inadyn is a simple and small dynamic DNS (DDNS) client
+/* Inadyn is a small and simple dynamic DNS (DDNS) client
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
  * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
@@ -105,7 +105,7 @@ static int alloc_context(ddns_t **pctx)
 			free(ctx->work_buf);
 
 		if (ctx->request_buf)
-			free(ctx->work_buf);
+			free(ctx->request_buf);
 
 		if (http_to_dyndns_constructed)
 			http_destruct(ctx->http_to_dyndns, DYNDNS_MAX_SERVER_NUMBER);
@@ -124,33 +124,50 @@ static void free_context(ddns_t *ctx)
 {
 	int i;
 
+	if (!ctx)
+		return;
+
 	http_destruct(ctx->http_to_ip_server, DYNDNS_MAX_SERVER_NUMBER);
 	http_destruct(ctx->http_to_dyndns, DYNDNS_MAX_SERVER_NUMBER);
 
-	free(ctx->work_buf);
-	ctx->work_buf = NULL;
+	if (ctx->work_buf) {
+		free(ctx->work_buf);
+		ctx->work_buf = NULL;
+	}
 
-	free(ctx->request_buf);
-	ctx->request_buf = NULL;
+	if (ctx->request_buf) {
+		free(ctx->request_buf);
+		ctx->request_buf = NULL;
+	}
 
 	for (i = 0; i < DYNDNS_MAX_SERVER_NUMBER; i++) {
 		ddns_info_t *info = &ctx->info[i];
 
-		free(info->creds.encoded_password);
-		info->creds.encoded_password = NULL;
+		if (info->creds.encoded_password) {
+			free(info->creds.encoded_password);
+			info->creds.encoded_password = NULL;
+		}
 	}
 
-	free(ctx->cfgfile);
-	ctx->cfgfile = NULL;
+	if (ctx->cfgfile) {
+		free(ctx->cfgfile);
+		ctx->cfgfile = NULL;
+	}
 
-	free(ctx->external_command);
-	ctx->external_command = NULL;
+	if (ctx->external_command) {
+		free(ctx->external_command);
+		ctx->external_command = NULL;
+	}
 
-	free(ctx->bind_interface);
-	ctx->bind_interface = NULL;
+	if (ctx->bind_interface) {
+		free(ctx->bind_interface);
+		ctx->bind_interface = NULL;
+	}
 
-	free(ctx->check_interface);
-	ctx->check_interface = NULL;
+	if (ctx->check_interface) {
+		free(ctx->check_interface);
+		ctx->check_interface = NULL;
+	}
 
 	free(ctx);
 }
@@ -160,7 +177,7 @@ int main(int argc, char *argv[])
 	int rc = 0, restart;
 	ddns_t *ctx = NULL;
 
-#ifdef CONFIG_OPENSSL
+#ifdef ENABLE_SSL
 	SSL_library_init();
 	SSL_load_error_strings();
 #endif
@@ -182,7 +199,7 @@ int main(int argc, char *argv[])
 
 	os_close_dbg_output();
 
-#ifdef CONFIG_OPENSSL
+#ifdef ENABLE_SSL
 	ERR_free_strings();
 #endif
 

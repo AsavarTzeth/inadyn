@@ -121,7 +121,7 @@ static int check_interface_address(ddns_t *ctx)
 			alias->ip_has_changed = strcmp(alias->address, address) != 0;
 			if (alias->ip_has_changed) {
 				anychange++;
-				strcpy(alias->address, address);
+				strlcpy(alias->address, address, sizeof(alias->address));
 			}
 		}
 	}
@@ -226,7 +226,7 @@ static int parse_my_ip_address(ddns_t *ctx, int UNUSED(servernum))
 				alias->ip_has_changed = strcmp(alias->address, address) != 0;
 				if (alias->ip_has_changed) {
 					anychange++;
-					strcpy(alias->address, address);
+					strlcpy(alias->address, address, sizeof(alias->address));
 				}
 			}
 		}
@@ -364,16 +364,16 @@ static int update_alias_table(ddns_t *ctx)
 			ddns_info_t *info = &ctx->info[i];
 
 			for (j = 0; j < info->alias_count; j++) {
-				char backup[SERVER_NAME_LEN];
 				ddns_alias_t *alias = &info->alias[j];
+				char backup[sizeof(alias->address)];
 
-				strcpy(backup, alias->address);
+				strlcpy(backup, alias->address, sizeof(backup));
 
 				/* TODO: Use random address in 203.0.113.0/24 instead */
 				snprintf(alias->address, sizeof(alias->address), "203.0.113.42");
 				TRY(send_update(ctx, info, alias, NULL));
 
-				strcpy(alias->address, backup);
+				strlcpy(alias->address, backup, sizeof(alias->address));
 			}
 		}
 
@@ -420,15 +420,15 @@ static int get_encoded_user_passwd(ddns_t *ctx)
 	int i, rc = 0;
 	char *buf = NULL;
 	size_t len;
-	const char *format = "%s:%s"; /* : + \0 = 2 bytes */
 
 	/* Take base64 encoding into account when allocating buf */
 	len = strlen(ctx->info[0].creds.password) + strlen(ctx->info[0].creds.username) + 2;
 	len = (len / 3 + ((len % 3) ? 1 : 0)) * 4; /* output length = 4 * [input len / 3] */
 
-	buf = malloc(len);
+	buf = calloc(len, sizeof(char));
 	if (!buf)
 		return RC_OUT_OF_MEMORY;
+	logit(LOG_DEBUG, "Allocated %zd bytes buffer %p for temp buffer before encoding.", len, buf);
 
 	for (i = 0; i < ctx->info_count; i++) {
 		int rc2;
@@ -437,12 +437,22 @@ static int get_encoded_user_passwd(ddns_t *ctx)
 		ddns_info_t *info = &ctx->info[i];
 
 		info->creds.encoded = 0;
-		snprintf(buf, len, format, info->creds.username, info->creds.password);
+
+		/* Concatenate username and password with a ':', without
+		 * snprintf(), since that can cause information loss if
+		 * the password has "\=" or similar in it, issue #57 */
+		strlcpy(buf, info->creds.username, len);
+		strlcat(buf, ":", len);
+		strlcat(buf, info->creds.password, len);
 
 		/* query required buffer size for base64 encoded data */
+		logit(LOG_DEBUG, "Checking required size for base64 encoding of user:pass for %s ...", info->system->name);
 		base64_encode(NULL, &dlen, (unsigned char *)buf, strlen(buf));
+
+		logit(LOG_DEBUG, "Allocating %zd bytes buffer for base64 encoding.", dlen);
 		encode = malloc(dlen);
 		if (!encode) {
+			logit(LOG_WARNING, "Out of memory when base64 encoding user:pass for %s!", info->system->name);
 			rc = RC_OUT_OF_MEMORY;
 			break;
 		}
@@ -450,16 +460,19 @@ static int get_encoded_user_passwd(ddns_t *ctx)
 		/* encode */
 		rc2 = base64_encode((unsigned char *)encode, &dlen, (unsigned char *)buf, strlen(buf));
 		if (rc2 != 0) {
+			logit(LOG_WARNING, "Failed base64 encoding of user:pass for %s!", info->system->name);
 			free(encode);
 			rc = RC_OUT_BUFFER_OVERFLOW;
 			break;
 		}
 
+		logit(LOG_DEBUG, "Base64 encoded string: %s", encode);
 		info->creds.encoded_password = encode;
 		info->creds.encoded = 1;
 		info->creds.size = strlen(info->creds.encoded_password);
 	}
 
+	logit(LOG_DEBUG, "Freeing temp encoding buffer %p", buf);
 	free(buf);
 
 	return rc;

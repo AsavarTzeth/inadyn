@@ -1,6 +1,6 @@
 README
 ======
-[![Build Status](https://travis-ci.org/troglobit/inadyn.png?branch=master)](https://travis-ci.org/troglobit/inadyn)
+[![Build Status](https://travis-ci.org/troglobit/inadyn.png?branch=master)](https://travis-ci.org/troglobit/inadyn)[![Coverity Scan Status](https://scan.coverity.com/projects/2981/badge.svg)](https://scan.coverity.com/projects/2981)
 
 Inadyn is a small and simple
 [DDNS](http://en.wikipedia.org/wiki/Dynamic_DNS) client with HTTPS
@@ -41,12 +41,15 @@ DDNS plugin.  See below for configuration examples.
 * http://www.changeip.com
 * http://www.zerigo.com
 * http://www.dhis.org
+* https://nsupdate.info
+* http://duckdns.org
 
 Some of these services are free of charge for non-commercial use, others
 take a small fee, but also provide more domains to choose from.
 
-Inadyn v1.99.8 and later support HTTPS, for DDNS providers that support
-this (you must check this yourself).  Tested are DynDNS and FreeDNS.
+Inadyn v1.99.8 and later support HTTPS (v1.99.11 and later also support SNI),
+for DDNS providers that support this (you must check this yourself).
+Tested are DynDNS, FreeDNS and nsupdate.info.
 Using HTTPS is recommended since it protects your credentials from being
 snooped and further reduces the risk of someone hijacking your account.
 
@@ -89,7 +92,7 @@ only by you/root) to prevent other users from accessing your DDNS server
 credentials.
 
 Note, here only the DynDNS account uses SSL, the No-IP account will
-still use regular HTTP.
+still use regular HTTP.  See below for SSL build instructions.
 
 The example has two commented out lines: logfile is disabled, causing
 Inadyn to default to use syslog, the pidfile is also commented out, so
@@ -125,6 +128,26 @@ When using the generic plugin you should first inspect the response from
 the DDNS provider.  Inadyn currently looks for a 200 HTTP response OK
 code and the string "good" or "OK" in the HTTP response body.  You may
 have to modify Inadyn manually, any patches for this are most welcome!
+
+
+Building with/witouth HTTPS Support
+===================================
+
+By default Inadyn tries to build with GnuTLS for HTTPS support.  GnuTLS
+is the recommended SSL library to use on UNIX distributions which do not
+provide OpenSSL as a system library.  However, when OpenSSL is available
+as a system library, for example in many embedded systems:
+
+    USE_OPENSSL=1 make distclean all
+
+To completely disable the HTTPS support in Inadyn:
+
+    ENABLE_SSL=0 make distclean all
+
+For more details on the OpenSSL and GNU GPL license issue, see:
+
+* https://lists.debian.org/debian-legal/2004/05/msg00595.html
+* https://people.gnome.org/~markmc/openssl-and-the-gpl
 
 
 Contact

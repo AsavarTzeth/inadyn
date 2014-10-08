@@ -90,6 +90,10 @@ http://www.changeip.com
 http://www.zerigo.com
 .It
 http://www.dhis.org
+.It
+https://nsupdate.info
+.It
+http://duckdns.org
 .El
 .Pp
 DDNS providers not listed here, like http://twoDNS.de, can often be
@@ -176,6 +180,10 @@ http://www.changeip.com
 http://www.zerigo.com
 .It Cm default@dhis.org
 http://www.dhis.org
+.It Cm ipv4@nsupdate.info
+https://nsupdate.info
+.It Cm default@duckdns.org
+http://duckdns.org
 .It Cm custom@http_srv_basic_auth
 Try this if your DDNS service provider is not listed
 .El
@@ -386,7 +394,8 @@ to exit gracefully.
 .It INT
 Same as TERM.
 .It USR1
-Force update now, even if the IP address has not changed.
+Force update now, even if the IP address has not changed.  Works in
+tandem with --fake-address
 .It USR2
 Check IP address change now. Useful when a new DHCP/PPPoE lease or new
 gateway is received.  Please note that
