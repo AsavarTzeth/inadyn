@@ -1,8 +1,6 @@
-/* Plugin for ChangeIP and OVH
+/* Plugin for GiraDNS
  *
- * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
- * Copyright (C) 2006       Steve Horbachuk
- * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2015  Thorsten Mühlfelder <thenktor@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,71 +21,62 @@
 
 #include "plugin.h"
 
-#define CHANGEIP_UPDATE_IP_HTTP_REQUEST					\
-	"GET %s?"							\
-	"system=dyndns&"						\
-	"hostname=%s&"							\
-	"myip=%s "							\
-	"HTTP/1.0\r\n"							\
-	"Host: %s\r\n"							\
-	"Authorization: Basic %s\r\n"					\
+#define GIRADNS_UPDATE_IP_HTTP_REQUEST				\
+	"GET %s?"						\
+	"u=%s&"							\
+	"p=%s&"							\
+	"ip=%s "						\
+	"HTTP/1.0\r\n"						\
+	"Host: %s\r\n"						\
 	"User-Agent: " AGENT_NAME " " SUPPORT_ADDR "\r\n\r\n"
 
-static int request  (ddns_t       *ctx,   ddns_info_t *info, ddns_alias_t *alias);
-static int response (http_trans_t *trans, ddns_info_t *info, ddns_alias_t *alias);
+static int request (ddns_t       *ctx,   ddns_info_t *info, ddns_alias_t *alias);
+static int response(http_trans_t *trans, ddns_info_t *info, ddns_alias_t *alias);
 
 static ddns_system_t plugin = {
-	.name         = "default@changeip.com",
+	.name         = "default@gira.de",
 
 	.request      = (req_fn_t)request,
 	.response     = (rsp_fn_t)response,
 
-	.checkip_name = "ip.changeip.com",
-	.checkip_url  = "/",
+	.checkip_name = "ipv4.wtfismyip.com",
+	.checkip_url  = "/text",
 
-	.server_name  = "nic.changeip.com",
-	.server_url   = "/nic/update"
-};
-
-static ddns_system_t ovh = {
-	.name         = "default@ovh.com",
-
-	.request      = (req_fn_t)request,
-	.response     = (rsp_fn_t)response,
-
-	.checkip_name = DYNDNS_MY_IP_SERVER,
-	.checkip_url  = DYNDNS_MY_CHECKIP_URL,
-
-	.server_name  = "www.ovh.com",
-	.server_url   = "/nic/update"
+	.server_name  = "homeserver.gira.de",
+	.server_url   = "/hsdyndns.php"
 };
 
 static int request(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias)
 {
 	return snprintf(ctx->request_buf, ctx->request_buflen,
-			CHANGEIP_UPDATE_IP_HTTP_REQUEST,
+			GIRADNS_UPDATE_IP_HTTP_REQUEST,
 			info->server_url,
-			alias->name,
+			info->creds.username,
+			info->creds.password,
 			alias->address,
-			info->server_name.name,
-			info->creds.encoded_password);
+			info->server_name.name);
 }
 
-static int response(http_trans_t *trans, ddns_info_t *info, ddns_alias_t *alias)
+static int response(http_trans_t *trans, ddns_info_t *UNUSED(info), ddns_alias_t *UNUSED(alias))
 {
-	return common_response(trans, info, alias);
+	char *resp = trans->p_rsp_body;
+
+	DO(http_status_valid(trans->status));
+
+	if (strstr(resp, "OK"))
+		return RC_OK;
+
+	return RC_DYNDNS_RSP_NOTOK;
 }
 
 PLUGIN_INIT(plugin_init)
 {
 	plugin_register(&plugin);
-	plugin_register(&ovh);
 }
 
 PLUGIN_EXIT(plugin_exit)
 {
 	plugin_unregister(&plugin);
-	plugin_unregister(&ovh);
 }
 
 /**

@@ -24,13 +24,15 @@
 #ifndef DYNDNS_H_
 #define DYNDNS_H_
 
+#include <paths.h>
+
 #include "config.h"
 #include "os.h"
 #include "error.h"
 #include "http.h"
 #include "debug.h"
 #include "plugin.h"
-#include "strlfun.h"
+#include "libite/lite.h"
 
 #define VERSION_STRING	"Inadyn version " VERSION " -- Dynamic DNS update client."
 #define AGENT_NAME	"inadyn/" VERSION
@@ -38,8 +40,8 @@
 
 /* Test values */
 #define DEFAULT_CONFIG_FILE	"/etc/inadyn.conf"
-#define RUNTIME_DATA_DIR	"/var/run/inadyn"
-#define DEFAULT_PIDFILE		RUNTIME_DATA_DIR "/inadyn.pid"
+#define RUNTIME_DATA_DIR        _PATH_VARRUN     "inadyn/"
+#define DEFAULT_PIDFILE         RUNTIME_DATA_DIR "inadyn.pid"
 
 #define DYNDNS_MY_IP_SERVER	"checkip.dyndns.org"
 #define DYNDNS_MY_CHECKIP_URL	"/"
@@ -130,6 +132,7 @@ typedef struct {
 	int            wildcard;
 
 	int            ssl_enabled;
+	int            append_myip; /* For custom setups! */
 } ddns_info_t;
 
 /* Client context */

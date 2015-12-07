@@ -1,5 +1,15 @@
-/* Plugin for dyndns2 api compatible services, like:
- * DynDNS, DNS-O-Matic, DynSIP, no-ip, 3322, HE and nsupdate.info.
+/* Plugin for DynDNS2 API compatible services
+ *
+ * Supported DDNS providers are:
+ *   - DynDNS,
+ *   - DNS-O-Matic,
+ *   - DynSIP,
+ *   - no-ip,
+ *   - 3322,
+ *   - Hurricane-Electric (HE)
+ *   - Loopia, and
+ *   - nsupdate.info
+ *   - Google Domains
  *
  * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
  * Copyright (C) 2006       Steve Horbachuk
@@ -107,6 +117,24 @@ static ddns_system_t henet = {
 	.server_url   = "/nic/update"
 };
 
+/* New API, see also the old compat plugin for Hurricane Electric's
+ * IPv6 tunnel brokering service in tunnelbroker.c, and above.
+ * For API details, see their forum posting at
+ * https://forums.he.net/index.php?topic=3153.msg19774#msg19774 */
+static ddns_system_t tunnelbroker = {
+	.name         = "default@tunnelbroker.net",
+
+	.request      = (req_fn_t)request,
+	.response     = (rsp_fn_t)response,
+
+	.checkip_name = DYNDNS_MY_IP_SERVER,
+	.checkip_url  = DYNDNS_MY_CHECKIP_URL,
+
+	.server_name  = "ipv4.tunnelbroker.net",
+	.server_url   = "/nic/update"
+};
+
+
 /* Note: below is IPv4 only. ipv6.nsupdate.info would work IPv6 only. */
 static ddns_system_t nsupdate_info_ipv4 = {
 	.name         = "ipv4@nsupdate.info",
@@ -118,6 +146,36 @@ static ddns_system_t nsupdate_info_ipv4 = {
 	.checkip_url  = "/myip",
 
 	.server_name  = "ipv4.nsupdate.info",
+	.server_url   = "/nic/update"
+};
+
+/*
+ * Loopia supports HTTPS, for details on supported variables, see
+ * https://support.loopia.com/wiki/About_the_DynDNS_support
+ */
+static ddns_system_t loopia = {
+	.name         = "default@loopia.com",
+
+	.request      = (req_fn_t)request,
+	.response     = (rsp_fn_t)response,
+
+	.checkip_name = "dns.loopia.se",
+	.checkip_url  = "/checkip/checkip.php",
+
+	.server_name  = "dns.loopia.se",
+	.server_url   = "/XDynDNSServer/XDynDNS.php"
+};
+
+static ddns_system_t googledomains = {
+	.name         = "default@domains.google.com",
+
+	.request      = (req_fn_t)request,
+	.response     = (rsp_fn_t)response,
+
+	.checkip_name = DYNDNS_MY_IP_SERVER,
+	.checkip_url  = DYNDNS_MY_CHECKIP_URL,
+
+	.server_name  = "domains.google.com",
 	.server_url   = "/nic/update"
 };
 
@@ -139,7 +197,10 @@ PLUGIN_INIT(plugin_init)
 	plugin_register(&noip);
 	plugin_register(&_3322);
 	plugin_register(&henet);
+	plugin_register(&tunnelbroker);
 	plugin_register(&nsupdate_info_ipv4);
+	plugin_register(&loopia);
+	plugin_register(&googledomains);
 }
 
 PLUGIN_EXIT(plugin_exit)
@@ -150,7 +211,10 @@ PLUGIN_EXIT(plugin_exit)
 	plugin_unregister(&noip);
 	plugin_unregister(&_3322);
 	plugin_unregister(&henet);
+	plugin_unregister(&tunnelbroker);
 	plugin_unregister(&nsupdate_info_ipv4);
+	plugin_unregister(&loopia);
+	plugin_unregister(&googledomains);
 }
 
 /**

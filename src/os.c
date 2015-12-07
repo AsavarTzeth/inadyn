@@ -429,7 +429,9 @@ static void pidexit(void)
 	}
 }
 
-static int pidfile(char *file)
+/* Continue using old pidfile fn for Inadyn 1.x series,
+ * incompatible semantics with OpenBSD version. */
+static int old_pidfile(char *file)
 {
 	FILE *fp;
 
@@ -470,8 +472,8 @@ int os_check_perms(void *UNUSED(arg))
 		return RC_FILE_IO_ACCESS_ERROR;
 	}
 
-	/* Not creating a pidfile is OK, the cache file is the critical point. */
-	pidfile(pidfile_path);
+	if (old_pidfile(pidfile_path))
+		logit(LOG_WARNING, "Failed creating pidfile %s: %m", pidfile_path);
 
 	return 0;
 }

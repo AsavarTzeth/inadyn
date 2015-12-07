@@ -1,8 +1,6 @@
-/* Plugin for ChangeIP and OVH
+/* Plugin for Duiadns
  *
- * Copyright (C) 2003-2004  Narcis Ilisei <inarcis2002@hotpop.com>
- * Copyright (C) 2006       Steve Horbachuk
- * Copyright (C) 2010-2014  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2015  Duiadns, Co. www.duiadns.net
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,71 +21,62 @@
 
 #include "plugin.h"
 
-#define CHANGEIP_UPDATE_IP_HTTP_REQUEST					\
+#define DUIADNS_UPDATE_IP_HTTP_REQUEST                   \
 	"GET %s?"							\
-	"system=dyndns&"						\
-	"hostname=%s&"							\
-	"myip=%s "							\
+	"host=%s&"							\
+	"ip4=%s "							\
 	"HTTP/1.0\r\n"							\
 	"Host: %s\r\n"							\
-	"Authorization: Basic %s\r\n"					\
+	"Authorization: Basic %s\r\n"           \
 	"User-Agent: " AGENT_NAME " " SUPPORT_ADDR "\r\n\r\n"
 
 static int request  (ddns_t       *ctx,   ddns_info_t *info, ddns_alias_t *alias);
 static int response (http_trans_t *trans, ddns_info_t *info, ddns_alias_t *alias);
 
 static ddns_system_t plugin = {
-	.name         = "default@changeip.com",
+	.name         = "default@duiadns.net",
 
 	.request      = (req_fn_t)request,
 	.response     = (rsp_fn_t)response,
 
-	.checkip_name = "ip.changeip.com",
+	.checkip_name = "ipv4.duia.ro",
 	.checkip_url  = "/",
 
-	.server_name  = "nic.changeip.com",
-	.server_url   = "/nic/update"
-};
-
-static ddns_system_t ovh = {
-	.name         = "default@ovh.com",
-
-	.request      = (req_fn_t)request,
-	.response     = (rsp_fn_t)response,
-
-	.checkip_name = DYNDNS_MY_IP_SERVER,
-	.checkip_url  = DYNDNS_MY_CHECKIP_URL,
-
-	.server_name  = "www.ovh.com",
-	.server_url   = "/nic/update"
+	.server_name  = "ipv4.duia.ro",
+	.server_url   = "/dynamic.duia"
 };
 
 static int request(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias)
 {
 	return snprintf(ctx->request_buf, ctx->request_buflen,
-			CHANGEIP_UPDATE_IP_HTTP_REQUEST,
-			info->server_url,
-			alias->name,
-			alias->address,
-			info->server_name.name,
-			info->creds.encoded_password);
+					DUIADNS_UPDATE_IP_HTTP_REQUEST,
+					info->server_url,
+					alias->name,
+					alias->address,
+					info->server_name.name,
+					info->creds.encoded_password);
 }
 
-static int response(http_trans_t *trans, ddns_info_t *info, ddns_alias_t *alias)
+static int response(http_trans_t *trans, ddns_info_t *UNUSED(info), ddns_alias_t *UNUSED(alias))
 {
-	return common_response(trans, info, alias);
+	char *resp = trans->p_rsp_body;
+
+	DO(http_status_valid(trans->status));
+
+	if (strstr(resp, "Hostname "))
+		return RC_OK;
+
+	return RC_DYNDNS_RSP_NOTOK;
 }
 
 PLUGIN_INIT(plugin_init)
 {
 	plugin_register(&plugin);
-	plugin_register(&ovh);
 }
 
 PLUGIN_EXIT(plugin_exit)
 {
 	plugin_unregister(&plugin);
-	plugin_unregister(&ovh);
 }
 
 /**
@@ -97,3 +86,4 @@ PLUGIN_EXIT(plugin_exit)
  *  c-file-style: "linux"
  * End:
  */
+

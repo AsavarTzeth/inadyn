@@ -2,9 +2,9 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(inadyn, 1.99.11-beta2, https://github.com/troglobit/inadyn/issues)
+AC_INIT(inadyn, 1.99.15, https://github.com/troglobit/inadyn/issues)
 AM_INIT_AUTOMAKE([1.11 no-dist-gzip dist-xz])
-AM_SILENT_RULES()
+AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADER([include/config.h])
@@ -45,10 +45,10 @@ AC_CHECK_HEADERS([arpa/inet.h arpa/nameser.h netinet/in.h stdlib.h string.h \
 # If HTTPS is enabled we check for either OpenSSL or GnuTLS libs+headers
 if test "$ac_enable_ssl" = "yes"; then
    if test "$ac_enable_openssl" = "yes"; then
-      AC_CHECK_LIB([ssl], [SSL_library_init], [],
-                          AC_MSG_ERROR([*** SSL library (OpenSSL) not found!]))
       AC_CHECK_LIB([crypto], [EVP_EncryptInit], [],
                           AC_MSG_ERROR([*** Crypto library (OpenSSL) not found!]))
+      AC_CHECK_LIB([ssl], [SSL_library_init], [],
+                          AC_MSG_ERROR([*** SSL library (OpenSSL) not found!]))
       AC_CHECK_HEADERS([openssl/crypto.h openssl/x509.h openssl/pem.h openssl/ssl.h \
                         openssl/tls1.h openssl/err.h])
       AC_DEFINE([CONFIG_OPENSSL], [], [Enable HTTPS support using OpenSSL library])
@@ -71,8 +71,22 @@ AC_TYPE_UINT32_T
 # Checks for library functions.
 AC_FUNC_FORK
 AC_PROG_GCC_TRADITIONAL
-AC_FUNC_MALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_CHECK_FUNCS([atexit memset poll socket strerror])
+
+# Check if user has downloaded a GitHub ZIP file and attempt to fix it.
+AC_MSG_CHECKING([status of GIT submodules])
+if test ! -e libite/lite.h; then
+    AC_MSG_RESULT([Missing!])
+    AC_MSG_CHECKING([if we can update all submodules])
+    run=`git submodule update --init`
+    if test $? -ne 0; then
+       AC_MSG_RESULT([Failed!  No Internet access?])
+       exit 1
+    fi
+    AC_MSG_RESULT([Yes, all fixed!])
+else
+    AC_MSG_RESULT([OK])
+fi
 
 AC_OUTPUT

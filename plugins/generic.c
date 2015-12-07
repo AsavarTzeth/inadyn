@@ -32,8 +32,7 @@
  * The parameter here is the entire request, except the the alias.
  */
 #define GENERIC_BASIC_AUTH_UPDATE_IP_REQUEST				\
-	"GET %s"							\
-	"%s "								\
+	"GET %s%s "							\
 	"HTTP/1.0\r\n"							\
 	"Host: %s\r\n"							\
 	"Authorization: Basic %s\r\n"					\
@@ -71,10 +70,14 @@ static ddns_system_t compat = {
 
 static int request(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias)
 {
+	char *arg = alias->name; /* Backwards compat, default to append hostname */
+
+	if (info->append_myip)	 /* New, append client's IP address instead. */
+		arg = alias->address;
+
 	return snprintf(ctx->request_buf, ctx->request_buflen,
 			GENERIC_BASIC_AUTH_UPDATE_IP_REQUEST,
-			info->server_url,
-			alias->name,
+			info->server_url, arg,
 			info->server_name.name,
 			info->creds.encoded_password);
 }
@@ -91,7 +94,7 @@ static int response(http_trans_t *trans, ddns_info_t *UNUSED(info), ddns_alias_t
 
 	DO(http_status_valid(trans->status));
 
-	if (strstr(resp, "OK") || strstr(resp, "good"))
+	if (strstr(resp, "OK") || strstr(resp, "good") || strstr(resp, "true"))
 		return 0;
 
 	return RC_DYNDNS_RSP_NOTOK;

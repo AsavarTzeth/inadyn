@@ -169,7 +169,8 @@ static int server_transaction(ddns_t *ctx, int servernum)
 		rc = RC_DYNDNS_INVALID_RSP_FROM_IP_SERVER;
 
 	http_exit(http);
-	logit(LOG_DEBUG, "Checked my IP, return code: %d", rc);
+	if (ctx->dbg.level > 2)
+		logit(LOG_DEBUG, "Checked my IP, return code: %d", rc);
 
 	return rc;
 }
@@ -184,14 +185,16 @@ static int parse_my_ip_address(ddns_t *ctx, int UNUSED(servernum))
 {
 	int found = 0;
 	char *accept = "0123456789.";
-	char *needle, *haystack;
+	char *needle, *haystack, *end;
 	struct in_addr addr;
 
 	if (!ctx || ctx->http_transaction.rsp_len <= 0 || !ctx->http_transaction.p_rsp)
 		return RC_INVALID_POINTER;
 
 	haystack = ctx->http_transaction.p_rsp_body;
-	do {
+	needle   = haystack;
+	end      = haystack + strlen(haystack) - 1;
+	while (needle && haystack < end) {
 		/* Try to find first decimal number (begin of IP) */
 		needle = strpbrk(haystack, accept);
 		if (needle) {
@@ -201,7 +204,7 @@ static int parse_my_ip_address(ddns_t *ctx, int UNUSED(servernum))
 				needle[len] = 0;
 
 			if (!inet_aton(needle, &addr)) {
-				haystack = needle + 1;
+				haystack = needle + len + 1;
 				continue;
 			}
 
@@ -210,7 +213,6 @@ static int parse_my_ip_address(ddns_t *ctx, int UNUSED(servernum))
 			break;
 		}
 	}
-	while (needle);
 
 	if (found) {
 		int i, anychange = 0;
@@ -303,7 +305,13 @@ static int send_update(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias, int 
 	if (client->ssl_enabled) /* XXX: Fix this better, possibly in http_init() */
 		client->tcp.ip.port = 443;
 
-	DO(http_init(client, "Sending IP# update to DDNS server"));
+	rc = http_init(client, "Sending IP# update to DDNS server");
+	if (rc) {
+		/* Update failed, force update again in ctx->cmd_check_period seconds */
+		ctx->force_addr_update = 1;
+
+		return rc;
+	}
 
 	memset(ctx->work_buf, 0, ctx->work_buflen);
 	memset(ctx->request_buf, 0, ctx->request_buflen);
@@ -325,6 +333,9 @@ static int send_update(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias, int 
 		logit(LOG_DEBUG, "DDNS server response: %s", trans.p_rsp);
 
 	if (rc) {
+		/* Update failed, force update again in ctx->cmd_check_period seconds */
+		ctx->force_addr_update = 1;
+
 		http_exit(client);
 		return rc;
 	}
@@ -335,6 +346,9 @@ static int send_update(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias, int 
 		      rc == RC_DYNDNS_RSP_RETRY_LATER ? "Temporary" : "Fatal");
 		logit(LOG_WARNING, "[%d %s] %s", trans.status, trans.status_desc,
 		      trans.p_rsp_body != trans.p_rsp ? trans.p_rsp_body : "");
+
+		/* Update failed, force update again in ctx->cmd_check_period seconds */
+		ctx->force_addr_update = 1;
 	} else {
 		logit(LOG_INFO, "Successful alias table update for %s => new IP# %s",
 		      alias->name, alias->address);
@@ -428,7 +442,8 @@ static int get_encoded_user_passwd(ddns_t *ctx)
 	buf = calloc(len, sizeof(char));
 	if (!buf)
 		return RC_OUT_OF_MEMORY;
-	logit(LOG_DEBUG, "Allocated %zd bytes buffer %p for temp buffer before encoding.", len, buf);
+	if (ctx->dbg.level > 2)
+		logit(LOG_DEBUG, "Allocated %zd bytes buffer %p for temp buffer before encoding.", len, buf);
 
 	for (i = 0; i < ctx->info_count; i++) {
 		int rc2;
@@ -446,10 +461,12 @@ static int get_encoded_user_passwd(ddns_t *ctx)
 		strlcat(buf, info->creds.password, len);
 
 		/* query required buffer size for base64 encoded data */
-		logit(LOG_DEBUG, "Checking required size for base64 encoding of user:pass for %s ...", info->system->name);
+		if (ctx->dbg.level > 2)
+			logit(LOG_DEBUG, "Checking required size for base64 encoding of user:pass for %s ...", info->system->name);
 		base64_encode(NULL, &dlen, (unsigned char *)buf, strlen(buf));
 
-		logit(LOG_DEBUG, "Allocating %zd bytes buffer for base64 encoding.", dlen);
+		if (ctx->dbg.level > 2)
+			logit(LOG_DEBUG, "Allocating %zd bytes buffer for base64 encoding.", dlen);
 		encode = malloc(dlen);
 		if (!encode) {
 			logit(LOG_WARNING, "Out of memory when base64 encoding user:pass for %s!", info->system->name);
@@ -466,13 +483,15 @@ static int get_encoded_user_passwd(ddns_t *ctx)
 			break;
 		}
 
-		logit(LOG_DEBUG, "Base64 encoded string: %s", encode);
+		if (ctx->dbg.level > 2)
+			logit(LOG_DEBUG, "Base64 encoded string: %s", encode);
 		info->creds.encoded_password = encode;
 		info->creds.encoded = 1;
 		info->creds.size = strlen(info->creds.encoded_password);
 	}
 
-	logit(LOG_DEBUG, "Freeing temp encoding buffer %p", buf);
+	if (ctx->dbg.level > 2)
+		logit(LOG_DEBUG, "Freeing temp encoding buffer %p", buf);
 	free(buf);
 
 	return rc;
@@ -547,7 +566,7 @@ static int check_address(ddns_t *ctx)
 
 		/* Ask IP server something so he will respond and give me my IP */
 		DO(server_transaction(ctx, servernum));
-		if (ctx->dbg.level > 1) {
+		if (ctx->dbg.level > 2) {
 			logit(LOG_DEBUG, "IP server response:");
 			logit(LOG_DEBUG, "%s", ctx->work_buf);
 		}
@@ -641,7 +660,8 @@ int ddns_main_loop(ddns_t *ctx, int argc, char *argv[])
 	}
 
 	/* Check file system permissions and create pidfile */
-	DO(os_check_perms(ctx));
+	if (!ctx->update_once)
+		DO(os_check_perms(ctx));
 
 	/* if logfile provided, redirect output to log file */
 	if (strlen(ctx->dbg.p_logfilename) != 0)
