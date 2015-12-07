@@ -1,0 +1,22 @@
+[Unit]
+Description=Inadyn DynDNS client
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/inadyn
+
+User=debian-inadyn
+Group=debian-inadyn
+RuntimeDirectory=inadyn
+PIDFile=/var/run/inadyn/inadyn.pid
+
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=full
+NoNewPrivileges=true
+ReadWriteDirectories=/var/run/inadyn
+
+[Install]
+WantedBy=multi-user.target
