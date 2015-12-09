@@ -16,7 +16,6 @@ PrivateDevices=true
 ProtectHome=true
 ProtectSystem=full
 NoNewPrivileges=true
-ReadWriteDirectories=/var/run/inadyn
 
 [Install]
 WantedBy=multi-user.target
