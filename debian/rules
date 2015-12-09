@@ -4,6 +4,20 @@
 %:
 	dh $@
 
+override_dh_auto_clean:
+	dh_testdir
+	dh_auto_clean
+	dh_clean
+
+	[ ! -f Makefile ] || $(MAKE) distclean
+	rm -f Makefile aclocal.m4 config.log config.status include/config.h.in \
+	compile INSTALL depcomp missing install-sh configure
+
+	# Temporary solution. Definitely not the right way to do this...
+	# At the very least this needs to be if checked
+	rm -rf libite
+	git checkout -- libite
+
 override_dh_auto_configure:
 	./autogen.sh
 	dh_auto_configure
