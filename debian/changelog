@@ -1,8 +1,30 @@
-inadyn (1.99.9-1) UNRELEASED; urgency=medium
+inadyn (1.99.15-1custom1) UNRELEASED; urgency=medium
 
+  [ Timur Birsh ]
   * New upstream release.
 
- -- Timur Birsh <taem@linukz.org>  Sat, 19 Jul 2014 18:55:35 +0600
+  [ Patrik Nilsson ]
+  * New upstream release.
+    - ssl mitigation fixes for POODLE.
+    - add support for many new services.
+    - new setting "append-myip".
+    - old api: ipv6tb@he.net is deprecated.
+    - new api: default@tunnelbroker.net
+    - uses libite for functions like pidfile(), strlcpy() etc.
+  * Add native systemd support.
+  * debian/control:
+    - update the list of supported providers.
+    - add dh-systemd package build dependency.
+    - add clang package build dependency.
+  * debian/inadyn.init:
+    - update CACHEDIR to /var/cache/$NAME.
+  * debian/rules:
+    - update to run autogen.sh before dh_auto_configure.
+    - add override_dh_auto_clean.
+  * debian/watch:
+    - update to more flexible regex.
+
+ -- Patrik Nilsson <asavartzeth@gmail.com>  Wed, 09 Dec 2015 11:10:13 -0500
 
 inadyn (1.99.4-1) unstable; urgency=low
 
